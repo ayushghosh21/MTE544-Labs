@@ -1,0 +1,16 @@
+running develop
+running egg_info
+writing bagreader.egg-info/PKG-INFO
+writing dependency_links to bagreader.egg-info/dependency_links.txt
+writing entry points to bagreader.egg-info/entry_points.txt
+writing requirements to bagreader.egg-info/requires.txt
+writing top-level names to bagreader.egg-info/top_level.txt
+reading manifest file 'bagreader.egg-info/SOURCES.txt'
+writing manifest file 'bagreader.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/site.py
+Creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader.egg-link (link to .)
+Installing bagrun script to /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/bagreader
+
+Installed /home/ayushg/LB2_PF/dev_ws/build/bagreader
+running install_data

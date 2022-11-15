@@ -1,0 +1,38 @@
+running egg_info
+creating ../../build/bagreader/bagreader.egg-info
+writing ../../build/bagreader/bagreader.egg-info/PKG-INFO
+writing dependency_links to ../../build/bagreader/bagreader.egg-info/dependency_links.txt
+writing entry points to ../../build/bagreader/bagreader.egg-info/entry_points.txt
+writing requirements to ../../build/bagreader/bagreader.egg-info/requires.txt
+writing top-level names to ../../build/bagreader/bagreader.egg-info/top_level.txt
+writing manifest file '../../build/bagreader/bagreader.egg-info/SOURCES.txt'
+reading manifest file '../../build/bagreader/bagreader.egg-info/SOURCES.txt'
+writing manifest file '../../build/bagreader/bagreader.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/ayushg/LB2_PF/dev_ws/build/bagreader/build
+creating /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib
+creating /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+copying bagreader/__init__.py -> /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+copying bagreader/rotation_test.py -> /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+copying bagreader/bagrun.py -> /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+running install
+running install_lib
+creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+copying /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader/__init__.py -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+copying /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader/rotation_test.py -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+copying /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader/bagrun.py -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+byte-compiling /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader/__init__.py to __init__.cpython-38.pyc
+byte-compiling /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader/rotation_test.py to rotation_test.cpython-38.pyc
+byte-compiling /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader/bagrun.py to bagrun.cpython-38.pyc
+running install_data
+creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index
+creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index/resource_index
+creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index/resource_index/packages
+copying resource/bagreader -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index/resource_index/packages
+copying package.xml -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/bagreader
+running install_egg_info
+Copying ../../build/bagreader/bagreader.egg-info to /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader-0.0.0-py3.8.egg-info
+running install_scripts
+Installing bagrun script to /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/bagreader
+writing list of installed files to '/home/ayushg/LB2_PF/dev_ws/build/bagreader/install.log'

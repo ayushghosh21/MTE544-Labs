@@ -1,0 +1,40 @@
+[0.625s] Invoking command in '/home/ayushg/LB2_PF/dev_ws/src/bagreader': PS1=\[\033[01;32m\]\u@docker\[\033[00m\][$ROS_DOMAIN_ID]:\[\033[01;34m\]\w\[\033[00m\]$ PYTHONPATH=/home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/bagreader build --build-base /home/ayushg/LB2_PF/dev_ws/build/bagreader/build install --prefix /home/ayushg/LB2_PF/dev_ws/install/bagreader --record /home/ayushg/LB2_PF/dev_ws/build/bagreader/install.log --single-version-externally-managed
+[0.825s] running egg_info
+[0.826s] creating ../../build/bagreader/bagreader.egg-info
+[0.826s] writing ../../build/bagreader/bagreader.egg-info/PKG-INFO
+[0.826s] writing dependency_links to ../../build/bagreader/bagreader.egg-info/dependency_links.txt
+[0.826s] writing entry points to ../../build/bagreader/bagreader.egg-info/entry_points.txt
+[0.826s] writing requirements to ../../build/bagreader/bagreader.egg-info/requires.txt
+[0.826s] writing top-level names to ../../build/bagreader/bagreader.egg-info/top_level.txt
+[0.829s] writing manifest file '../../build/bagreader/bagreader.egg-info/SOURCES.txt'
+[0.857s] reading manifest file '../../build/bagreader/bagreader.egg-info/SOURCES.txt'
+[0.858s] writing manifest file '../../build/bagreader/bagreader.egg-info/SOURCES.txt'
+[0.858s] running build
+[0.858s] running build_py
+[0.858s] creating /home/ayushg/LB2_PF/dev_ws/build/bagreader/build
+[0.859s] creating /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib
+[0.859s] creating /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+[0.859s] copying bagreader/__init__.py -> /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+[0.859s] copying bagreader/rotation_test.py -> /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+[0.859s] copying bagreader/bagrun.py -> /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader
+[0.859s] running install
+[0.859s] running install_lib
+[0.860s] creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+[0.860s] copying /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader/__init__.py -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+[0.861s] copying /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader/rotation_test.py -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+[0.861s] copying /home/ayushg/LB2_PF/dev_ws/build/bagreader/build/lib/bagreader/bagrun.py -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader
+[0.861s] byte-compiling /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader/__init__.py to __init__.cpython-38.pyc
+[0.862s] byte-compiling /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader/rotation_test.py to rotation_test.cpython-38.pyc
+[0.863s] byte-compiling /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader/bagrun.py to bagrun.cpython-38.pyc
+[0.864s] running install_data
+[0.864s] creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index
+[0.864s] creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index/resource_index
+[0.864s] creating /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index/resource_index/packages
+[0.864s] copying resource/bagreader -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/ament_index/resource_index/packages
+[0.864s] copying package.xml -> /home/ayushg/LB2_PF/dev_ws/install/bagreader/share/bagreader
+[0.865s] running install_egg_info
+[0.866s] Copying ../../build/bagreader/bagreader.egg-info to /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages/bagreader-0.0.0-py3.8.egg-info
+[0.866s] running install_scripts
+[0.880s] Installing bagrun script to /home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/bagreader
+[0.881s] writing list of installed files to '/home/ayushg/LB2_PF/dev_ws/build/bagreader/install.log'
+[0.900s] Invoked command in '/home/ayushg/LB2_PF/dev_ws/src/bagreader' returned '0': PS1=\[\033[01;32m\]\u@docker\[\033[00m\][$ROS_DOMAIN_ID]:\[\033[01;34m\]\w\[\033[00m\]$ PYTHONPATH=/home/ayushg/LB2_PF/dev_ws/install/bagreader/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/bagreader build --build-base /home/ayushg/LB2_PF/dev_ws/build/bagreader/build install --prefix /home/ayushg/LB2_PF/dev_ws/install/bagreader --record /home/ayushg/LB2_PF/dev_ws/build/bagreader/install.log --single-version-externally-managed
