@@ -18,6 +18,7 @@ from sklearn.neighbors import NearestNeighbors as KNN
 
 class Bagreader(Node):
 
+
     def __init__(self):
         # Here you have the class constructor
         # call super() in the constructor to initialize the Node object
