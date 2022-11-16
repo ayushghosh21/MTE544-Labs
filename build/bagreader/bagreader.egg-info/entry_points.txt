@@ -1,3 +1,0 @@
-[console_scripts]
-bagrun = bagreader.bagrun:main
-
