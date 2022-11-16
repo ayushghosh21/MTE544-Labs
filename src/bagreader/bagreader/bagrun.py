@@ -57,6 +57,9 @@ class Bagreader(Node):
 
         self.particles = self.initialize_particle_filter()
         
+        self.iterations = 0
+
+        self.n_converged_points = 5
         
     def import_occupancy_map(self, f='map_maze_1.pgm', yaml_f="map_maze_1.yaml"):
         """Load provided map and convert to coordinates in meters"""
@@ -114,16 +117,10 @@ class Bagreader(Node):
         # roll_base_map, pitch_base_map, yaw_base_map = self.euler_from_quaternion(quaternion)
         #robot_pose = [trans_base_map.x, trans_base_map.y, yaw_base_map]
         #lidar_cart = self.transform_laser(robot_pose)
-        import time
-        start_time = time.time()
+
         self.particle_filter()
-        print("PF--- %s seconds ---" % (time.time() - start_time))
-        
-        import time
-        start_time = time.time()
 
         self.vizualize_points(self.particles)
-        print("--- %s seconds ---" % (time.time() - start_time))
         # self.get_average_position()
 
         # this takes the value at angle 359 (equivalent to angle 0)
@@ -233,11 +230,11 @@ class Bagreader(Node):
             ellipse.pose.orientation.w = qw
 
             ellipse.scale.x = 0.1
-            ellipse.scale.y = 0.1
+            ellipse.scale.y = 0.05
             ellipse.scale.z = 0.1
             
             ellipse.color.a = 1.0
-            ellipse.color.r = 0.0
+            ellipse.color.r = 1.0
             ellipse.color.g = 1.0
             ellipse.color.b = 0.0
             
@@ -339,21 +336,20 @@ class Bagreader(Node):
         """
 
         # reset list
-        predicted_samples = np.zeros((self.NUM_PARTICLES,3))
-        resampled_samples = []
+        predicted_samples = None
+        resampled_samples = None
         weights = np.zeros((self.NUM_PARTICLES))
         
         import time
         start_time = time.time()
 
-        for i in range(self.NUM_PARTICLES):
-            posterior_sample_eta_k_minus1 = posterior_samples[i]
-            # Pass sample i through motion model
-            predicted_sample_eta_k = self.sample_motion_model(posterior_sample_eta_k_minus1)
-            # evaluate sample according to sensor measurement model
-            w_k = self.likelihood_field(predicted_sample_eta_k)
-            weights[i] = w_k
-            predicted_samples[i]= predicted_sample_eta_k
+        posterior_sample_eta_k_minus1 = posterior_samples
+        # Pass sample i through motion model
+        predicted_sample_eta_k = self.sample_motion_model(posterior_sample_eta_k_minus1)
+        # evaluate sample according to sensor measurement model
+        weights = np.apply_along_axis(self.likelihood_field, 1, predicted_sample_eta_k)
+        
+        predicted_samples = posterior_samples
 
         print("Liklihood--- %s seconds ---" % (time.time() - start_time))
         # Normalize weights
@@ -369,7 +365,10 @@ class Bagreader(Node):
     def particle_filter(self):
         # Particle Filter applied to map
         self.particles = self.particle_filter_loop(self.particles)
-
+        unq = np.unique(self.particles, axis=0)
+        if(len(unq) <= self.n_converged_points):
+            print(unq)
+    
     def get_average_position(self):
         """Get estimated position of robot by averaging all particles"""
         # Get mean of particles along each axis
@@ -379,10 +378,10 @@ class Bagreader(Node):
     def initialize_particle_filter(self):
         """"Initalize particle filter by creating a uniform list of particles"""
         # np.random.choice return a uniform distribution by default
-        sel_index = np.random.choice(self.map_max_w*self.map_max_h, replace = False, size=self.NUM_PARTICLES)
+        sel_index = np.random.choice(round((self.map_max_w*0.5)*(self.map_max_h*0.75)), replace = False, size=self.NUM_PARTICLES)
         # Generate random x,y,theta uniformly over the entire map
         random_x, random_y = np.unravel_index(sel_index, (self.map_max_w, self.map_max_h))
-        random_angle = np.random.uniform(0,2*math.pi,size=self.NUM_PARTICLES)
+        random_angle = np.random.uniform(-math.pi, math.pi,size=self.NUM_PARTICLES)
 
         # random_particles is array of size NUM_PARTICLES x 3
         random_particles = np.stack((random_x * self.map_res, random_y * self.map_res, random_angle),axis=-1)

@@ -43,7 +43,7 @@ def generate_launch_description():
 	# Point 2 Ground Truth, TF between map and odom
 	args = ["0", "0", "0", "-0.55", "0", "0", "map", "odom"]
 	
-	a#rgs = ["0", "0", "0", "0", "0", "0", "map", "odom"]
+	#args = ["0", "0", "0", "0", "0", "0", "map", "odom"]
 	# Point 5 Ground Truth, TF between map and odom
 	#args = ["0.05", "-0.05", "0", "-0.61", "0", "0", "map", "odom"]
 	
