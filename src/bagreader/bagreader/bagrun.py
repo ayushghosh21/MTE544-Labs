@@ -16,6 +16,10 @@ from rclpy.qos import ReliabilityPolicy, QoSProfile
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.neighbors import NearestNeighbors as KNN
+from sklearn.neighbors import KDTree
+from scipy.ndimage import rotate
+
+test = True
 
 class Bagreader(Node):
 
@@ -27,7 +31,7 @@ class Bagreader(Node):
         super().__init__('bagreader')
         # create the subscriber object
         self.laser_sub = self.create_subscription(
-            LaserScan, '/scan', self.laser_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+            LaserScan, '/scan', self.laser_callback, QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT))
         
 
         self.viz_pub = self.create_publisher(MarkerArray, 'viz_topic_array', 10)
@@ -36,20 +40,26 @@ class Bagreader(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.laser_forward = LaserScan()
-        self.NUM_PARTICLES = 10
+        self.NUM_PARTICLES = 5000
         
         self.origin = [0,0,0]
         self.map_res = 0.03
 
         self.occupancy_map = self.import_occupancy_map()
-        
+
         self.map_max_w = self.occupancy_map.shape[1]
         self.map_max_h = self.occupancy_map.shape[0]
         
-        self.particles = self.draw_random_points()
+        self.ob_list = self.occupancy_to_list()
+
+        # Create KDTree for finding the closest point on the map, in likli
+        self.kdt=KDTree(self.ob_list)
+
+        self.particles = self.initialize_particle_filter()
         
         
-    def import_occupancy_map(self, f='map_maze_1.pgm'):
+    def import_occupancy_map(self, f='map_maze_1.pgm', yaml_f="map_maze_1.yaml"):
+        """Load provided map and convert to coordinates in meters"""
 
         import matplotlib.pyplot as plt
 
@@ -61,14 +71,25 @@ class Bagreader(Node):
 
 
         import yaml
-        with open("map_maze_1.yaml", 'r') as stream:
+        with open(yaml_f, 'r') as stream:
             data_loaded = yaml.safe_load(stream)
 
         self.origin = data_loaded['origin']
-        #print(self.origin)
         self.map_res = data_loaded['resolution']
+
         return ob
 
+    def occupancy_to_list(self):
+
+          # Convert Occupancy Map to Coordinates
+        ob_rotated = rotate(self.occupancy_map, -90, reshape=True)
+
+        ob = np.argwhere(ob_rotated == 1)*self.map_res #Map occupancy grid
+        axis_offsets = np.array([self.origin[0], self.origin[1]])
+        
+        ob = ob + axis_offsets[None,:]
+
+        return ob
     # need to setup the laser callback message
 
     def laser_callback(self, msg):
@@ -93,11 +114,17 @@ class Bagreader(Node):
         # roll_base_map, pitch_base_map, yaw_base_map = self.euler_from_quaternion(quaternion)
         #robot_pose = [trans_base_map.x, trans_base_map.y, yaw_base_map]
         #lidar_cart = self.transform_laser(robot_pose)
-        
+        import time
+        start_time = time.time()
         self.particle_filter()
-        self.vizualize_points(self.particles)
-
+        print("PF--- %s seconds ---" % (time.time() - start_time))
         
+        import time
+        start_time = time.time()
+
+        self.vizualize_points(self.particles)
+        print("--- %s seconds ---" % (time.time() - start_time))
+        # self.get_average_position()
 
         # this takes the value at angle 359 (equivalent to angle 0)
     
@@ -165,24 +192,49 @@ class Bagreader(Node):
     
         return roll_x, pitch_y, yaw_z # in radians
     
-
-    def vizualize_points(self, lidar_data):
+    def get_quaternion_from_euler(self, roll, pitch, yaw):
+        """
+        Convert an Euler angle to a quaternion.
+        
+        Input
+            :param roll: The roll (rotation around x-axis) angle in radians.
+            :param pitch: The pitch (rotation around y-axis) angle in radians.
+            :param yaw: The yaw (rotation around z-axis) angle in radians.
+        
+        Output
+            :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
+        """
+        qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+        qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+        qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        
+        return [qx, qy, qz, qw]
+        
+    def vizualize_points(self, points):
         
         markers = MarkerArray()
         
         
-        for idx, val in enumerate(lidar_data):
+        for idx, val in enumerate(points):
             ellipse = Marker()
             ellipse.header.frame_id = 'map'
             ellipse.header.stamp = self.get_clock().now().to_msg()
-            ellipse.type = Marker.CUBE
+            ellipse.type = Marker.ARROW
             ellipse.pose.position.x = val[0] 
             ellipse.pose.position.y = val[1]
             ellipse.pose.position.z = 0.0
 
-            ellipse.scale.x = 0.02
-            ellipse.scale.y = 0.02
-            ellipse.scale.z = 0.02
+            [qx, qy, qz, qw] = self.get_quaternion_from_euler(0, 0 , val[2])
+
+            ellipse.pose.orientation.x = qx
+            ellipse.pose.orientation.y = qy
+            ellipse.pose.orientation.z = qz
+            ellipse.pose.orientation.w = qw
+
+            ellipse.scale.x = 0.1
+            ellipse.scale.y = 0.1
+            ellipse.scale.z = 0.1
             
             ellipse.color.a = 1.0
             ellipse.color.r = 0.0
@@ -227,8 +279,9 @@ class Bagreader(Node):
         lidar_points = np.stack((point_x, point_y), axis=-1)
 
         return lidar_points
-    
+        
     def likelihood_field(self, predicted_sample):
+        
         """
         Measurement Model - Likelihood field. Lec 15 Slide 79
 
@@ -236,41 +289,41 @@ class Bagreader(Node):
         predicted_sample: the current particle's pose.
         lidar_points: zk_measurements, in sensor frame. We get this from the class impicitly
         """
-        q = 1 # cumulative weight
+
         # distribution paramters
         # We have set it similar to example from class, where n1=1,n2=0,n3=0
-        sigma_hit = 0.01 # in meters #TODO: tune
+        # The lidar datasheet shows an accuracy of 1% for a full scale range of 12m.
+        # Assume that this accuracy corresponds to a full scale acceptable measurment range of +- 3 std dev. 
+        # Thus the standard deviation is calculated as:
+        lidar_standard_deviation = (0.01*12)*2/6
 
         #Measured lidar scan at pose predicted_sample
         lidar_points = self.transform_laser(predicted_sample)
         # lidar_points has all infinite beams filtered out
         # lidar_points is already converted to the global map frame
-
-        #Occupancy Map to Coordinates
-        ob = np.argwhere(self.occupancy_map.T == 0)*self.map_res #Map occupancy grid
-
-        # find closest object/occupied point on the map - using KNN
-        #Fitting KNN to the obstacle coordinates
-        nbrs = KNN(n_neighbors=1, algorithm='ball_tree').fit(ob)
-
-        #Find indices to closest obstacle point to the lidar point
-        _, indices = nbrs.kneighbors(lidar_points)
-
-        #List of closest obstacle points
-        z = ob[indices].reshape(lidar_points.shape)
         
+        # testing plotting of occupancy map vs transformed lidar points
+        # global test
+        # if(test):
+        #     test2 = rotate(self.occupancy_map, -90, reshape=True)
+        #     test_ob = np.argwhere(test2 == 1)*self.map_res
+        #     plt.scatter(ob[:,0],ob[:,1],marker='.')
+        #     plt.scatter(lidar_points[:,0],lidar_points[:,1],marker='.')
+        #     plt.show()
+        #     test = False
+
         # calculate distance between each lidar point and its respective point
-        dist = np.linalg.norm(lidar_points-z,axis=1)
-
-        # probability of each point hitting - we ignore p_rand and p_max
-        pz = (1/(sqrt(2*np.pi)*sigma_hit)) * np.exp(-(0.5 * (dist/sigma_hit)**2)) #+ p_rand_mult, ignore noise?
-        q = np.prod(pz)
-
-        return q
+        dist=self.kdt.query(lidar_points, k=1)[0][:]
+        
+        # probability of each point hitting - we ignore p_rand and p_max, and sum to find overall weight
+        weight= np.sum (np.exp(-(dist**2)/(2*lidar_standard_deviation**2)))
+        return weight
 
     def sample_motion_model(inputs:None, posterior_sample):
-        # Robot is static, hence don't need a motion model
-        # Hence new predicted sample = posterior sample. Inputs u_k-1 are ignored
+        """"Motion Model
+        Robot is static, hence don't need a motion model
+        """
+        # New predicted sample = posterior sample as there is no motion
         return posterior_sample
 
     def particle_filter_loop(self, posterior_samples):
@@ -286,38 +339,58 @@ class Bagreader(Node):
         """
 
         # reset list
-        predicted_samples = np.zeros((1,3))
+        predicted_samples = np.zeros((self.NUM_PARTICLES,3))
         resampled_samples = []
-        weights = []
+        weights = np.zeros((self.NUM_PARTICLES))
+        
+        import time
+        start_time = time.time()
+
         for i in range(self.NUM_PARTICLES):
             posterior_sample_eta_k_minus1 = posterior_samples[i]
             # Pass sample i through motion model
             predicted_sample_eta_k = self.sample_motion_model(posterior_sample_eta_k_minus1)
             # evaluate sample according to sensor measurement model
             w_k = self.likelihood_field(predicted_sample_eta_k)
-            weights.append(w_k)
-            predicted_samples = np.vstack([predicted_samples, predicted_sample_eta_k]) 
+            weights[i] = w_k
+            predicted_samples[i]= predicted_sample_eta_k
 
-            # resampling. Draw new samples according to importance weight wks
-            # draw new sample from predicted_samples according to distribution of w_k
-        resampled_samples = resampled_samples[np.random.choice(predicted_samples.shape[0],size=self.NUM_PARTICLES,p=weights)]
+        print("Liklihood--- %s seconds ---" % (time.time() - start_time))
+        # Normalize weights
+        
+        weights = weights/np.sum(weights)
 
+        # resampling. Draw new samples according to importance weight wks
+        # draw new sample from predicted_samples according to distribution of w_k
+        resampled_samples = predicted_samples[np.random.choice(self.NUM_PARTICLES,size=self.NUM_PARTICLES,p=weights)]
+            
         return resampled_samples
     
     def particle_filter(self):
         # Particle Filter applied to map
         self.particles = self.particle_filter_loop(self.particles)
 
-    # TODO: on startup create an initial list of points around robot's position.
-    # change x,y,theta pose
-    def draw_random_points(self):
-        """"Initalize particle filter samples distribution"""
+    def get_average_position(self):
+        """Get estimated position of robot by averaging all particles"""
+        # Get mean of particles along each axis
+        average_pose = np.mean(self.particles, axis=0)
+        return average_pose
+
+    def initialize_particle_filter(self):
+        """"Initalize particle filter by creating a uniform list of particles"""
+        # np.random.choice return a uniform distribution by default
         sel_index = np.random.choice(self.map_max_w*self.map_max_h, replace = False, size=self.NUM_PARTICLES)
+        # Generate random x,y,theta uniformly over the entire map
         random_x, random_y = np.unravel_index(sel_index, (self.map_max_w, self.map_max_h))
-        
         random_angle = np.random.uniform(0,2*math.pi,size=self.NUM_PARTICLES)
 
-        random_particles = np.stack((random_x* self.map_res, random_y * self.map_res, random_angle),axis=-1)
+        # random_particles is array of size NUM_PARTICLES x 3
+        random_particles = np.stack((random_x * self.map_res, random_y * self.map_res, random_angle),axis=-1)
+        
+        # Coordinate transform
+        axis_offsets = np.array([self.origin[0], self.origin[1], 0])
+        
+        random_particles = random_particles + axis_offsets[None,:]
         
         return random_particles
 

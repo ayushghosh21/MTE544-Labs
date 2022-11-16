@@ -14,7 +14,7 @@ def generate_launch_description():
 	rviz2_node = Node(
 		package='rviz2',
 		executable='rviz2',
-		arguments=['-d', [os.path.join(home_path, 'LB2_PF/lab2/map/load_map_rviz', 'map_rviz.rviz')]]
+		arguments=['-d', [os.path.join(home_path, 'MTE544-Labs/src/load_map_rviz', 'map_rviz.rviz')]]
 	)
         
 	ld.add_action(rviz2_node)

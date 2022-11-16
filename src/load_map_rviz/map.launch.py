@@ -12,7 +12,7 @@ def generate_launch_description():
 	home_path = os.getenv("HOME")
 	
 	# Map server
-	map_server_config_path = os.path.join(home_path, 'LB2_PF/lab2/map/load_map_rviz', 'map_maze_1.yaml')
+	map_server_config_path = os.path.join(home_path, 'MTE544-Labs/src/load_map_rviz', 'map_maze_1.yaml')
 
 	lifecycle_nodes = ['map_server']
 	use_sim_time = True
@@ -43,8 +43,9 @@ def generate_launch_description():
 	# Point 2 Ground Truth, TF between map and odom
 	args = ["0", "0", "0", "-0.55", "0", "0", "map", "odom"]
 	
+	a#rgs = ["0", "0", "0", "0", "0", "0", "map", "odom"]
 	# Point 5 Ground Truth, TF between map and odom
-	args = ["0.05", "-0.05", "0", "-0.61", "0", "0", "map", "odom"]
+	#args = ["0.05", "-0.05", "0", "-0.61", "0", "0", "map", "odom"]
 	
 	#args = ["0.05", "-2.5", "0", "1.61", "0", "0", "map", "odom"]
 	
