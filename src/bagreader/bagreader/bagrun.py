@@ -44,7 +44,7 @@ class Bagreader(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.laser_forward = LaserScan()
-        self.NUM_PARTICLES = 2000
+        self.NUM_PARTICLES = 5000
         
         self.origin = [0,0,0]
         self.map_res = 0.03
@@ -75,7 +75,7 @@ class Bagreader(Node):
 
         with open(f, 'rb') as pgmf:
             im = plt.imread(pgmf)
-        ob = ~im.astype(np.bool)
+        ob = ~im.astype(bool)
         # plt.imshow(ob, cmap='gray')
         # plt.show()
 
@@ -110,7 +110,7 @@ class Bagreader(Node):
 
 
 
-        average_pose = np.average(np.unique(self.particles, axis=0), axis=0)
+        average_pose = np.average(self.particles, axis=0)
         
         curr_percieved_lidar_points = self.transform_laser(average_pose)
         self.vizualize_points(curr_percieved_lidar_points, lidar=True)
@@ -320,7 +320,7 @@ class Bagreader(Node):
         dist=self.kdt.query(lidar_points, k=1)[0][:]
         
         # probability of each point hitting - we ignore p_rand and p_max, and sum to find overall weight
-        weight= np.sum (np.exp(-(dist**2)/(2*lidar_standard_deviation**2)))
+        weight= np.prod(np.exp(-(dist**2)/(2*lidar_standard_deviation**2)))
         return weight
 
     def sample_motion_model(inputs:None, posterior_sample):
@@ -356,11 +356,12 @@ class Bagreader(Node):
         predicted_samples = posterior_samples
         # Normalize weights
         
-        weights = weights/np.sum(weights)
+        if np.sum(weights) != 0:
+            weights = weights/np.sum(weights)
 
         # resampling. Draw new samples according to importance weight wks
         # draw new sample from predicted_samples according to distribution of w_k
-        resampled_samples = predicted_samples[np.random.choice(self.NUM_PARTICLES,size=self.NUM_PARTICLES,p=weights)]
+        resampled_samples = predicted_samples[np.random.choice(self.NUM_PARTICLES,size=self.NUM_PARTICLES,p=weights if np.sum(weights) != 0 else None)]
             
         return resampled_samples
     
