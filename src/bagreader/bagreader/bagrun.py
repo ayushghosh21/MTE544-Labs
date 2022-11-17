@@ -33,14 +33,18 @@ class Bagreader(Node):
         self.laser_sub = self.create_subscription(
             LaserScan, '/scan', self.laser_callback, QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT))
         
+       
 
         self.viz_pub = self.create_publisher(MarkerArray, 'viz_topic_array', 10)
+        self.viz_lidar_pub = self.create_publisher(MarkerArray, 'viz_lidar_topic_array', 10)
+
+        self.pub_list = [self.viz_pub, self.viz_lidar_pub]
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.laser_forward = LaserScan()
-        self.NUM_PARTICLES = 5000
+        self.NUM_PARTICLES = 2000
         
         self.origin = [0,0,0]
         self.map_res = 0.03
@@ -54,11 +58,14 @@ class Bagreader(Node):
 
         # Create KDTree for finding the closest point on the map, in likli
         self.kdt=KDTree(self.ob_list)
+        
+        self.map_search_bound_x = [0, 100]
+        self.map_search_bound_y = [170, 320]
 
         self.particles = self.initialize_particle_filter()
         
         self.iterations = 0
-
+        
         self.n_converged_points = 5
         
     def import_occupancy_map(self, f='map_maze_1.pgm', yaml_f="map_maze_1.yaml"):
@@ -69,8 +76,8 @@ class Bagreader(Node):
         with open(f, 'rb') as pgmf:
             im = plt.imread(pgmf)
         ob = ~im.astype(np.bool)
-        #plt.imshow(ob, cmap='gray')
-        #plt.show()
+        # plt.imshow(ob, cmap='gray')
+        # plt.show()
 
 
         import yaml
@@ -97,28 +104,16 @@ class Bagreader(Node):
 
     def laser_callback(self, msg):
         self.laser_forward = msg
-        #print(self.laser_forward)
-
-        # t_base_map = self.tf_buffer.lookup_transform(
-        #         'map',
-        #         'base_link',
-        #         rclpy.time.Time())
-            
-        # trans_base_map = t_base_map.transform.translation
-        # rot_base_map = t_base_map.transform.rotation
         
-        # quaternion = (
-        #     rot_base_map.x,
-        #     rot_base_map.y,
-        #     rot_base_map.z,
-        #     rot_base_map.w
-        #     )
-            
-        # roll_base_map, pitch_base_map, yaw_base_map = self.euler_from_quaternion(quaternion)
-        #robot_pose = [trans_base_map.x, trans_base_map.y, yaw_base_map]
-        #lidar_cart = self.transform_laser(robot_pose)
-
         self.particle_filter()
+
+
+
+
+        average_pose = np.average(np.unique(self.particles, axis=0), axis=0)
+        
+        curr_percieved_lidar_points = self.transform_laser(average_pose)
+        self.vizualize_points(curr_percieved_lidar_points, lidar=True)
 
         self.vizualize_points(self.particles)
         # self.get_average_position()
@@ -208,7 +203,7 @@ class Bagreader(Node):
         
         return [qx, qy, qz, qw]
         
-    def vizualize_points(self, points):
+    def vizualize_points(self, points, lidar=False):
         
         markers = MarkerArray()
         
@@ -221,27 +216,39 @@ class Bagreader(Node):
             ellipse.pose.position.x = val[0] 
             ellipse.pose.position.y = val[1]
             ellipse.pose.position.z = 0.0
-
-            [qx, qy, qz, qw] = self.get_quaternion_from_euler(0, 0 , val[2])
-
-            ellipse.pose.orientation.x = qx
-            ellipse.pose.orientation.y = qy
-            ellipse.pose.orientation.z = qz
-            ellipse.pose.orientation.w = qw
-
-            ellipse.scale.x = 0.1
-            ellipse.scale.y = 0.05
-            ellipse.scale.z = 0.1
-            
-            ellipse.color.a = 1.0
-            ellipse.color.r = 1.0
-            ellipse.color.g = 1.0
-            ellipse.color.b = 0.0
             
             ellipse._id = idx
+
+            if lidar:
+                ellipse.type = Marker.SPHERE
+                ellipse.scale.x = 0.03
+                ellipse.scale.y = 0.03
+                ellipse.scale.z = 0.03
+                
+                ellipse.color.a = 1.0
+                ellipse.color.r = 1.0
+                ellipse.color.g = 0.0
+                ellipse.color.b = 0.0
+            else:
+                [qx, qy, qz, qw] = self.get_quaternion_from_euler(0, 0 , val[2])
+
+                ellipse.pose.orientation.x = qx
+                ellipse.pose.orientation.y = qy
+                ellipse.pose.orientation.z = qz
+                ellipse.pose.orientation.w = qw
+
+                ellipse.scale.x = 0.1
+                ellipse.scale.y = 0.05
+                ellipse.scale.z = 0.1
+                
+                ellipse.color.a = 1.0
+                ellipse.color.r = 1.0
+                ellipse.color.g = 1.0
+                ellipse.color.b = 0.0
+            
             markers.markers.append(ellipse)
 
-        self.viz_pub.publish(markers)
+        self.pub_list[lidar].publish(markers)
 
     def lidar_to_cartesian(self, robot_pose, delta_base_lidar=[0, 0, 0]):
         
@@ -339,9 +346,6 @@ class Bagreader(Node):
         predicted_samples = None
         resampled_samples = None
         weights = np.zeros((self.NUM_PARTICLES))
-        
-        import time
-        start_time = time.time()
 
         posterior_sample_eta_k_minus1 = posterior_samples
         # Pass sample i through motion model
@@ -350,8 +354,6 @@ class Bagreader(Node):
         weights = np.apply_along_axis(self.likelihood_field, 1, predicted_sample_eta_k)
         
         predicted_samples = posterior_samples
-
-        print("Liklihood--- %s seconds ---" % (time.time() - start_time))
         # Normalize weights
         
         weights = weights/np.sum(weights)
@@ -378,13 +380,18 @@ class Bagreader(Node):
     def initialize_particle_filter(self):
         """"Initalize particle filter by creating a uniform list of particles"""
         # np.random.choice return a uniform distribution by default
-        sel_index = np.random.choice(round((self.map_max_w*0.5)*(self.map_max_h*0.75)), replace = False, size=self.NUM_PARTICLES)
+
+        delta_x = self.map_search_bound_x[1] - self.map_search_bound_x[0]
+        delta_y = self.map_search_bound_y[1] - self.map_search_bound_y[0]
+        
+        sel_index = np.random.choice(round((delta_x)*(delta_y)), replace = False, size=self.NUM_PARTICLES)
         # Generate random x,y,theta uniformly over the entire map
-        random_x, random_y = np.unravel_index(sel_index, (self.map_max_w, self.map_max_h))
-        random_angle = np.random.uniform(-math.pi, math.pi,size=self.NUM_PARTICLES)
+        random_x, random_y = np.unravel_index(sel_index, (delta_x, delta_y))
+        
+        random_angle = np.random.uniform(0, 2*math.pi,size=self.NUM_PARTICLES)
 
         # random_particles is array of size NUM_PARTICLES x 3
-        random_particles = np.stack((random_x * self.map_res, random_y * self.map_res, random_angle),axis=-1)
+        random_particles = np.stack(((random_x+self.map_search_bound_x[0]) * self.map_res, (random_y + self.map_search_bound_y[0]) * self.map_res, random_angle),axis=-1)
         
         # Coordinate transform
         axis_offsets = np.array([self.origin[0], self.origin[1], 0])
