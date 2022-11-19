@@ -68,7 +68,7 @@ class Mte544ParticleFilter(Node):
         self.map_search_bound_y = [170, 320]
 
         self.particles = self.initialize_particle_filter()
-        self.vizualize_points(self.particles)
+        self.visualize_points(self.particles)
 
         self.iterations = 0
         
@@ -134,9 +134,9 @@ class Mte544ParticleFilter(Node):
             self.print_data(self.average_pose)
 
         curr_percieved_lidar_points = self.transform_laser(self.average_pose)
-        self.vizualize_points(curr_percieved_lidar_points, lidar=True)
+        self.visualize_points(curr_percieved_lidar_points, lidar=True)
 
-        self.vizualize_points(self.particles)
+        self.visualize_points(self.particles)
         # self.get_average_position()
 
         # this takes the value at angle 359 (equivalent to angle 0)
@@ -183,7 +183,7 @@ class Mte544ParticleFilter(Node):
             
             return lidar_points
             
-            #self.vizualize_points(lidar_points)       
+            #self.visualize_points(lidar_points)       
             #print(np.amax(lidar_points))
 
         except TransformException as ex:
@@ -235,7 +235,7 @@ class Mte544ParticleFilter(Node):
         
         return [qx, qy, qz, qw]
         
-    def vizualize_points(self, points, lidar=False):
+    def visualize_points(self, points, lidar=False):
         
         markers = MarkerArray()
         
