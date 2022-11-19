@@ -49,11 +49,11 @@ def generate_launch_description():
 		#map_server_cmd,
 		#start_lifecycle_manager_cmd,
 		TimerAction(
-			period=1.0,
+			period=2.0,
 			actions=[map_server_cmd, start_lifecycle_manager_cmd],
 		),
 		TimerAction(
-			period=1.5,
+			period=2.5,
 			actions=[particle_filter_node],
 		),
 	])
