@@ -147,7 +147,6 @@ class Mte544ParticleFilter(Node):
         if np.isclose(var, 0.0):
             self.stop_iterations = True
             self.get_logger().info(f"Iteration #{self.iterations}, x:{avg_pose[0]}, y:{avg_pose[1]}, theta:{avg_pose[2]}")
-            self.get_logger().info(f"Var #{var}")
             
         else:
             self.get_logger().info(f"Iteration #{self.iterations}, variance: {var}")
