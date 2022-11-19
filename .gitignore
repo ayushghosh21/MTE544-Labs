@@ -2,3 +2,5 @@ build
 install
 log
 
+src/*
+!src/mte544_particle_filter
