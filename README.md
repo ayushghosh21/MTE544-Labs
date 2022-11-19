@@ -21,7 +21,9 @@ Ensure the workspace is sourced in the terminal:
 ```ros2 launch mte544_particle_filter particle_filter.launch.py```
 
 
-2. Wait for the launch file to finish loading (it will take at least 2.5 seconds). A message displaying "Ready!" will show. 
+2. Wait for the launch file to finish loading (it will take at least 2.5 seconds). A map will appear in Rviz2 and a message displaying "Ready!" will show in the terminal.
+
+Note: If the map does not appear, try re-running the launch file.
 
 Open a new terminal in the root of this workspace, and run the Point 2 bag file:
 
@@ -39,7 +41,9 @@ Ensure the workspace is sourced in the terminal:
 ```ros2 launch mte544_particle_filter particle_filter.launch.py```
 
 
-2. Wait for the launch file to finish loading (it will take at least 2.5 seconds). A message displaying "Ready!" will show. 
+2. Wait for the launch file to finish loading (it will take at least 2.5 seconds). A map will appear in Rviz2 and a message displaying "Ready!" will show in the terminal.
+
+Note: If the map does not appear, try re-running the launch file.
 
 Open a new terminal in the root of this workspace, and run the Point 5 bag file:
 
