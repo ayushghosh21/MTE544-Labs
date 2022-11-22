@@ -33,7 +33,7 @@ class Mte544ParticleFilter(Node):
 
         # create the subscriber object
         self.laser_sub = self.create_subscription(
-            LaserScan, '/scan', self.laser_callback, QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT))
+            LaserScan, '/scan', self.laser_callback, QoSProfile(depth=300, reliability=ReliabilityPolicy.BEST_EFFORT))
         
        
 
@@ -46,7 +46,7 @@ class Mte544ParticleFilter(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         self.laser_forward = LaserScan()
-        self.NUM_PARTICLES = 5000
+        self.NUM_PARTICLES = 2500
         
         self.origin = [0,0,0]
         self.map_res = 0.03
