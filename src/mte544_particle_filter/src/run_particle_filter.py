@@ -4,8 +4,6 @@ import rclpy
 # import the ROS2 python libraries
 from rclpy.node import Node
 # import the Twist interface from the geometry_msgs package
-import math
-from math import sqrt
 from tf2_msgs.msg import TFMessage
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
@@ -22,18 +20,17 @@ from sklearn.neighbors import KDTree
 from scipy.ndimage import rotate
 from ament_index_python.packages import get_package_share_directory
 import os
-import yaml
-        
-test = True
+import yaml 
+import math
+from math import sqrt
 
 class Mte544ParticleFilter(Node):
 
 
     def __init__(self):
-        # Here you have the class constructor
-        # call super() in the constructor to initialize the Node object
-        # the parameter you pass is the node name
+
         super().__init__('mte544_pf_node')
+
         # create the subscriber object
         self.laser_sub = self.create_subscription(
             LaserScan, '/scan', self.laser_callback, QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT))
@@ -92,8 +89,6 @@ class Mte544ParticleFilter(Node):
                 im = plt.imread(pgmf)
         
         ob = ~im.astype(bool)
-        # plt.imshow(ob, cmap='gray')
-        # plt.show()
 
         try:
             yaml_file = os.path.join(get_package_share_directory("mte544_particle_filter"), 'launch', yaml_f)
@@ -121,7 +116,7 @@ class Mte544ParticleFilter(Node):
         ob = ob + axis_offsets[None,:]
 
         return ob
-    # need to setup the laser callback message
+
 
     def laser_callback(self, msg):
         self.laser_forward = msg
@@ -129,27 +124,26 @@ class Mte544ParticleFilter(Node):
         if not self.stop_iterations:
             self.particle_filter()
 
-            self.average_pose = np.average(self.particles, axis=0)
+            self.average_pose, mse = self.get_position_stats()
             
-            self.print_data(self.average_pose)
+            self.print_data(self.average_pose, mse)
 
         curr_percieved_lidar_points = self.transform_laser(self.average_pose)
         self.visualize_points(curr_percieved_lidar_points, lidar=True)
 
         self.visualize_points(self.particles)
         # self.get_average_position()
-
-        # this takes the value at angle 359 (equivalent to angle 0)
+        
     
-    def print_data(self, avg_pose):
+    def print_data(self, avg_pose, mse):
         var = np.mean(np.var(self.particles, axis=0))
         
         if np.isclose(var, 0.0):
             self.stop_iterations = True
-            self.get_logger().info(f"Iteration #{self.iterations}, x:{avg_pose[0]}, y:{avg_pose[1]}, theta:{avg_pose[2]}")
+            self.get_logger().info(f"Iteration #{self.iterations}, x:{avg_pose[0]}, y:{avg_pose[1]}, theta:{avg_pose[2]}, MSE:{mse}")
             
         else:
-            self.get_logger().info(f"Iteration #{self.iterations}, variance: {var}")
+            self.get_logger().info(f"Iteration #{self.iterations}, variance: {var}, MSE:{mse}")
 
 
     def transform_laser(self, robot_pose = [0, 0, 0]):
@@ -174,17 +168,12 @@ class Mte544ParticleFilter(Node):
                 
             roll, pitch, yaw = self.euler_from_quaternion(quaternion)
 
-            #print("trans", t.transform.translation.x, t.transform.translation.y)
-            #print("rotation", yaw)
 
             delta_base_lidar = [trans.x, trans.y, yaw]
-            #print(delta_base_lidar)
+
             lidar_points = self.lidar_to_cartesian(robot_pose, delta_base_lidar)
             
             return lidar_points
-            
-            #self.visualize_points(lidar_points)       
-            #print(np.amax(lidar_points))
 
         except TransformException as ex:
             self.get_logger().info(
@@ -336,21 +325,12 @@ class Mte544ParticleFilter(Node):
 
         #Measured lidar scan at pose predicted_sample
         lidar_points = self.transform_laser(predicted_sample)
-        # lidar_points has all infinite beams filtered out
+
         # lidar_points is already converted to the global map frame
-        
-        # testing plotting of occupancy map vs transformed lidar points
-        # global test
-        # if(test):
-        #     test2 = rotate(self.occupancy_map, -90, reshape=True)
-        #     test_ob = np.argwhere(test2 == 1)*self.map_res
-        #     plt.scatter(ob[:,0],ob[:,1],marker='.')
-        #     plt.scatter(lidar_points[:,0],lidar_points[:,1],marker='.')
-        #     plt.show()
-        #     test = False
+
 
         # calculate distance between each lidar point and its respective point
-        dist=self.kdt.query(lidar_points, k=1)[0][:]
+        dist= self.kdt.query(lidar_points, k=1)[0][:]
         
         # probability of each point hitting - we ignore p_rand and p_max, and sum to find overall weight
         weight= np.prod(np.exp(-(dist**2)/(2*lidar_standard_deviation**2)))
@@ -375,7 +355,6 @@ class Mte544ParticleFilter(Node):
         zk_measurements: list of points from lidar scan. Accessed internally, not passed in
         """
 
-        # reset list
         predicted_samples = None
         resampled_samples = None
         weights = np.zeros((self.NUM_PARTICLES))
@@ -387,6 +366,7 @@ class Mte544ParticleFilter(Node):
         weights = np.apply_along_axis(self.likelihood_field, 1, predicted_sample_eta_k)
         
         predicted_samples = posterior_samples
+
         # Normalize weights
         
         if np.sum(weights) != 0:
@@ -404,11 +384,21 @@ class Mte544ParticleFilter(Node):
         
         self.iterations += 1
 
-    def get_average_position(self):
-        """Get estimated position of robot by averaging all particles"""
+    def get_position_stats(self):
+        """Get estimated position of robot by averaging all particles
+           Get MSE between the estimated position and lidar scan"""
+
         # Get mean of particles along each axis
         average_pose = np.mean(self.particles, axis=0)
-        return average_pose
+
+        lidar_points = self.transform_laser(average_pose)
+
+        # calculate distance between each lidar point and its respective point
+        dist = self.kdt.query(lidar_points, k=1)[0][:]
+
+        mse_pose = np.mean((dist)**2)
+
+        return average_pose, mse_pose
 
     def initialize_particle_filter(self):
         """"Initalize particle filter by creating a uniform list of particles"""
@@ -435,15 +425,17 @@ class Mte544ParticleFilter(Node):
 
 def main(args=None):
     # initialize the ROS communication
-    rclpy.init(args=args)
-    # declare the node constructor
-    particle_filter = Mte544ParticleFilter()
-    # pause the program execution, waits for a request to kill the node (ctrl+c)
-    rclpy.spin(particle_filter)
-    # Explicity destroys the node
-    particle_filter.destroy_node()
-    # shutdown the ROS communication
-    rclpy.shutdown()
+    try:
+        rclpy.init(args=args)
+        # declare the node constructor
+        particle_filter = Mte544ParticleFilter()
+        # pause the program execution, waits for a request to kill the node (ctrl+c)
+        rclpy.spin(particle_filter)
+    except KeyboardInterrupt:
+        # Explicity destroys the node
+        particle_filter.destroy_node()
+        # shutdown the ROS communication
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
