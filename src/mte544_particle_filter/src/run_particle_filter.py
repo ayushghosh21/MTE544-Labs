@@ -73,7 +73,6 @@ class Mte544ParticleFilter(Node):
 
         self.average_pose = None
 
-        self.first_lidar = True
         self.first_TF = True
         self.lidar_base_trans = None
         self.lidar_base_rot = None
