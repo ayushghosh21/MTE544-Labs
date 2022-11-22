@@ -72,6 +72,12 @@ class Mte544ParticleFilter(Node):
         self.stop_iterations = False
 
         self.average_pose = None
+
+        self.first_lidar = True
+        self.first_TF = True
+        self.lidar_base_trans = None
+        self.lidar_base_rot = None
+        self.yaw = None
         
         self.get_logger().info("Ready!")
         
@@ -119,21 +125,21 @@ class Mte544ParticleFilter(Node):
 
 
     def laser_callback(self, msg):
-        self.laser_forward = msg
-        
-        if not self.stop_iterations:
-            self.particle_filter()
-
-            self.average_pose, mse = self.get_position_stats()
+            self.laser_forward = msg
             
-            self.print_data(self.average_pose, mse)
+            if not self.stop_iterations:
+                self.particle_filter()
 
-        curr_percieved_lidar_points = self.transform_laser(self.average_pose)
-        self.visualize_points(curr_percieved_lidar_points, lidar=True)
+                self.average_pose, mse = self.get_position_stats()
+                
+                self.print_data(self.average_pose, mse)
 
-        self.visualize_points(self.particles)
-        # self.get_average_position()
-        
+            curr_percieved_lidar_points = self.transform_laser(self.average_pose)
+            self.visualize_points(curr_percieved_lidar_points, lidar=True)
+
+            self.visualize_points(self.particles)
+            # self.get_average_position()
+
     
     def print_data(self, avg_pose, mse):
         var = np.mean(np.var(self.particles, axis=0))
@@ -151,25 +157,29 @@ class Mte544ParticleFilter(Node):
         to_frame_rel = 'base_footprint'
 
         try:
-            t = self.tf_buffer.lookup_transform(
-                to_frame_rel,
-                from_frame_rel,
-                rclpy.time.Time())
-            
-            trans = t.transform.translation
-            rot = t.transform.rotation
-            
-            quaternion = (
-                rot.x,
-                rot.y,
-                rot.z,
-                rot.w
-                )
+            if self.first_TF:
+                # Lookup the TF for the first time only
+                t = self.tf_buffer.lookup_transform(
+                    to_frame_rel,
+                    from_frame_rel,
+                    rclpy.time.Time())
                 
-            roll, pitch, yaw = self.euler_from_quaternion(quaternion)
+                self.lidar_base_trans = t.transform.translation
+                self.lidar_base_rot = t.transform.rotation
+            
+                quaternion = (
+                    self.lidar_base_rot.x,
+                    self.lidar_base_rot.y,
+                    self.lidar_base_rot.z,
+                    self.lidar_base_rot.w
+                    )
+                
+                _, _, self.yaw = self.euler_from_quaternion(quaternion)
 
+                self.first_TF = False
+                t = None
 
-            delta_base_lidar = [trans.x, trans.y, yaw]
+            delta_base_lidar = [self.lidar_base_trans.x, self.lidar_base_trans.y, self.yaw]
 
             lidar_points = self.lidar_to_cartesian(robot_pose, delta_base_lidar)
             
