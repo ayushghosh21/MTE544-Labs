@@ -3,26 +3,21 @@
 import rclpy
 # import the ROS2 python libraries
 from rclpy.node import Node
-# import the Twist interface from the geometry_msgs package
-from tf2_msgs.msg import TFMessage
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import Marker, MarkerArray
 
-from geometry_msgs.msg import Point
 from sensor_msgs.msg import LaserScan
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.neighbors import NearestNeighbors as KNN
 from sklearn.neighbors import KDTree
 from scipy.ndimage import rotate
 from ament_index_python.packages import get_package_share_directory
 import os
 import yaml 
 import math
-from math import sqrt
 
 class Mte544ParticleFilter(Node):
 
@@ -36,37 +31,48 @@ class Mte544ParticleFilter(Node):
             LaserScan, '/scan', self.laser_callback, QoSProfile(depth=300, reliability=ReliabilityPolicy.BEST_EFFORT))
         
        
-
+        # Create visualizer publisher objects
         self.viz_pub = self.create_publisher(MarkerArray, 'viz_topic_array', 10)
         self.viz_lidar_pub = self.create_publisher(MarkerArray, 'viz_lidar_topic_array', 10)
 
         self.pub_list = [self.viz_pub, self.viz_lidar_pub]
-
+        
+        # Used for finding static TF between lidar frame and base_footprint
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
+        # Stores current laser scan values
         self.laser_forward = LaserScan()
+
         self.NUM_PARTICLES = 2500
         
+        # Initialize map parameters to default values 
         self.origin = [0,0,0]
         self.map_res = 0.03
 
+        # Import Occupancy map from image file
         self.occupancy_map = self.import_occupancy_map()
 
         self.map_max_w = self.occupancy_map.shape[1]
         self.map_max_h = self.occupancy_map.shape[0]
         
+        # List containing cartesian points for obstacles
         self.ob_list = self.occupancy_to_list()
 
-        # Create KDTree for finding the closest point on the map, in likli
+        # Create KDTree for finding the closest point on the map, in likelihood field
         self.kdt=KDTree(self.ob_list)
         
+        # Define search area on map in pixels
         self.map_search_bound_x = [0, 100]
         self.map_search_bound_y = [170, 320]
 
+        # Generate uniform distribution of initial particles
         self.particles = self.initialize_particle_filter()
+        
+        # Visualize initial particles
         self.visualize_points(self.particles)
 
+        # Iteration counter for particle filter
         self.iterations = 0
         
         self.stop_iterations = False
@@ -74,6 +80,8 @@ class Mte544ParticleFilter(Node):
         self.average_pose = None
 
         self.first_TF = True
+
+        # Variables tracking the transform between lidar frame and base_footprint
         self.lidar_base_trans = None
         self.lidar_base_rot = None
         self.yaw = None
@@ -81,7 +89,7 @@ class Mte544ParticleFilter(Node):
         self.get_logger().info("Ready!")
         
     def import_occupancy_map(self, f='map_maze_1.pgm', yaml_f="map_maze_1.yaml"):
-        """Load provided map and convert to coordinates in meters"""
+        """Load provided map and convert to occupancy map in pixels"""
 
         try:
             map_file = os.path.join(get_package_share_directory("mte544_particle_filter"), 'launch', f)
@@ -93,6 +101,7 @@ class Mte544ParticleFilter(Node):
             with open(f, 'rb') as pgmf:
                 im = plt.imread(pgmf)
         
+        # Inverting obstacle values from 0 to 1 
         ob = ~im.astype(bool)
 
         try:
@@ -105,42 +114,48 @@ class Mte544ParticleFilter(Node):
             with open(yaml_f, 'r') as stream:
                 data_loaded = yaml.safe_load(stream)
         
+        # Store map parameters
         self.origin = data_loaded['origin']
         self.map_res = data_loaded['resolution']
 
         return ob
 
     def occupancy_to_list(self):
+        """Convert obstacle map to global coordinates in meters"""
 
-          # Convert Occupancy Map to Coordinates
+        # Rotate by -90 degrees to match world frame orientation
         ob_rotated = rotate(self.occupancy_map, -90, reshape=True)
 
         ob = np.argwhere(ob_rotated == 1)*self.map_res #Map occupancy grid
         axis_offsets = np.array([self.origin[0], self.origin[1]])
         
+        # Add origin offset to occupancy list
         ob = ob + axis_offsets[None,:]
 
         return ob
 
 
     def laser_callback(self, msg):
-            self.laser_forward = msg
+        """Run the particle filter in a loop until converged. Visualize lidar and particles at each iteration."""
+
+        self.laser_forward = msg
+        
+        if not self.stop_iterations:
+            self.particle_filter()
+
+            self.average_pose, mse = self.get_position_stats()
             
-            if not self.stop_iterations:
-                self.particle_filter()
+            self.print_data(self.average_pose, mse)
 
-                self.average_pose, mse = self.get_position_stats()
-                
-                self.print_data(self.average_pose, mse)
+        curr_perceived_lidar_points = self.transform_laser(self.average_pose)
+        self.visualize_points(curr_perceived_lidar_points, lidar=True)
 
-            curr_percieved_lidar_points = self.transform_laser(self.average_pose)
-            self.visualize_points(curr_percieved_lidar_points, lidar=True)
-
-            self.visualize_points(self.particles)
-            # self.get_average_position()
+        self.visualize_points(self.particles)
 
     
     def print_data(self, avg_pose, mse):
+        
+        """Calculated variance and raises flag to stop particle filter when variance is low."""
         var = np.mean(np.var(self.particles, axis=0))
         
         if np.isclose(var, 0.0):
@@ -152,6 +167,8 @@ class Mte544ParticleFilter(Node):
 
 
     def transform_laser(self, robot_pose = [0, 0, 0]):
+
+        """Find the transform between lidar frame and base_footprint and convert lidar points to cartesian."""
         from_frame_rel = 'rplidar_link'
         to_frame_rel = 'base_footprint'
 
@@ -234,7 +251,8 @@ class Mte544ParticleFilter(Node):
         return [qx, qy, qz, qw]
         
     def visualize_points(self, points, lidar=False):
-        
+        """Helper function to visualize particles and lidar points in RViz"""
+
         markers = MarkerArray()
         
         
@@ -282,12 +300,14 @@ class Mte544ParticleFilter(Node):
         self.pub_list[lidar].publish(markers)
 
     def lidar_to_cartesian(self, robot_pose, delta_base_lidar=[0, 0, 0]):
-        
+        """Returns lidar points as cartesian. Converts from polar to cartesian. Filters undefined (inf) values."""
+
         # Current robot pose
         curr_x = robot_pose[0]
         curr_y = robot_pose[1]
         curr_yaw = robot_pose[2]  
         
+        # TF between base_footprint and lidar frame
         delta_x = delta_base_lidar[0]
         delta_y = delta_base_lidar[1]
         delta_yaw = delta_base_lidar[2]
@@ -322,17 +342,17 @@ class Mte544ParticleFilter(Node):
 
         Parameters:
         predicted_sample: the current particle's pose.
-        lidar_points: zk_measurements, in sensor frame. We get this from the class impicitly
+        lidar_points: zk_measurements, in sensor frame. We get this from the class implicitly
         """
 
-        # distribution paramters
+        # distribution parameters
         # We have set it similar to example from class, where n1=1,n2=0,n3=0
         # The lidar datasheet shows an accuracy of 1% for a full scale range of 12m.
-        # Assume that this accuracy corresponds to a full scale acceptable measurment range of +- 3 std dev. 
+        # Assume that this accuracy corresponds to a full scale acceptable measurement range of +- 3 std dev. 
         # Thus the standard deviation is calculated as:
         lidar_standard_deviation = (0.01*12)*2/6
 
-        #Measured lidar scan at pose predicted_sample
+        # Measured lidar scan at pose predicted_sample
         lidar_points = self.transform_laser(predicted_sample)
 
         # lidar_points is already converted to the global map frame
@@ -354,7 +374,7 @@ class Mte544ParticleFilter(Node):
 
     def particle_filter_loop(self, posterior_samples):
         """
-        Particle Filter Algorithim. 
+        Particle Filter Algorithm. 
         Each particle contains a state (x,y,theta) = pose of the robot
 
         Lec 16 Slide 94. 
@@ -369,15 +389,16 @@ class Mte544ParticleFilter(Node):
         weights = np.zeros((self.NUM_PARTICLES))
 
         posterior_sample_eta_k_minus1 = posterior_samples
+
         # Pass sample i through motion model
         predicted_sample_eta_k = self.sample_motion_model(posterior_sample_eta_k_minus1)
+        
         # evaluate sample according to sensor measurement model
         weights = np.apply_along_axis(self.likelihood_field, 1, predicted_sample_eta_k)
         
         predicted_samples = posterior_samples
 
-        # Normalize weights
-        
+        # If sum of weights not 0, then normalize weights.
         if np.sum(weights) != 0:
             weights = weights/np.sum(weights)
 
@@ -388,7 +409,7 @@ class Mte544ParticleFilter(Node):
         return resampled_samples
     
     def particle_filter(self):
-        # Particle Filter applied to map
+        # Apply Particle Filter
         self.particles = self.particle_filter_loop(self.particles)
         
         self.iterations += 1
@@ -402,7 +423,7 @@ class Mte544ParticleFilter(Node):
 
         lidar_points = self.transform_laser(average_pose)
 
-        # calculate distance between each lidar point and its respective point
+        # calculate distance between each lidar point and its respective closest point
         dist = self.kdt.query(lidar_points, k=1)[0][:]
 
         mse_pose = np.mean((dist)**2)
@@ -410,13 +431,16 @@ class Mte544ParticleFilter(Node):
         return average_pose, mse_pose
 
     def initialize_particle_filter(self):
-        """"Initalize particle filter by creating a uniform list of particles"""
-        # np.random.choice return a uniform distribution by default
 
+        """Initialize particle filter by creating a uniform distribution of particles"""
+        
+        # Define window on map where we generate particles
         delta_x = self.map_search_bound_x[1] - self.map_search_bound_x[0]
         delta_y = self.map_search_bound_y[1] - self.map_search_bound_y[0]
         
+        # np.random.choice returns a uniform distribution on sample without replacement
         sel_index = np.random.choice(round((delta_x)*(delta_y)), replace = False, size=self.NUM_PARTICLES)
+
         # Generate random x,y,theta uniformly over the entire map
         random_x, random_y = np.unravel_index(sel_index, (delta_x, delta_y))
         
@@ -425,9 +449,10 @@ class Mte544ParticleFilter(Node):
         # random_particles is array of size NUM_PARTICLES x 3
         random_particles = np.stack(((random_x+self.map_search_bound_x[0]) * self.map_res, (random_y + self.map_search_bound_y[0]) * self.map_res, random_angle),axis=-1)
         
-        # Coordinate transform
+        # Map origin offset
         axis_offsets = np.array([self.origin[0], self.origin[1], 0])
         
+        # Offset particles by map origin
         random_particles = random_particles + axis_offsets[None,:]
         
         return random_particles
@@ -436,13 +461,18 @@ def main(args=None):
     # initialize the ROS communication
     try:
         rclpy.init(args=args)
+        
         # declare the node constructor
         particle_filter = Mte544ParticleFilter()
+        
         # pause the program execution, waits for a request to kill the node (ctrl+c)
         rclpy.spin(particle_filter)
+    
     except KeyboardInterrupt:
-        # Explicity destroys the node
+        
+        # Explicitly destroys the node
         particle_filter.destroy_node()
+        
         # shutdown the ROS communication
         rclpy.shutdown()
 

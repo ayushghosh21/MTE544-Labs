@@ -9,7 +9,6 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 	
-	# Map server
 	map_server_config_path = os.path.join(get_package_share_directory("mte544_particle_filter"), 'launch', 'map_maze_1.yaml')
 
 	lifecycle_nodes = ['map_server']
@@ -46,12 +45,14 @@ def generate_launch_description():
 
 	return LaunchDescription([
 		rviz2_node,
-		#map_server_cmd,
-		#start_lifecycle_manager_cmd,
+
+		# Start map_server and lifecycle node after 2 seconds 
 		TimerAction(
 			period=2.0,
 			actions=[map_server_cmd, start_lifecycle_manager_cmd],
 		),
+
+		# Start particle_filter node after 2.5 seconds
 		TimerAction(
 			period=2.5,
 			actions=[particle_filter_node],

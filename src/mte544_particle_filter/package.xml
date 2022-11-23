@@ -3,7 +3,7 @@
 <package format="3">
   <name>mte544_particle_filter</name>
   <version>0.0.0</version>
-  <description>TODO: Particle Filter developed for MTE 544 Lab 2</description>
+  <description>Particle Filter developed for MTE 544 Lab 2</description>
   <maintainer email="ayush.ghosh@uwaterloo.ca">ayush.ghosh</maintainer>
   <maintainer email="nshaju@uwaterloo.ca">nshaju</maintainer>
   <maintainer email="abhi.agrahari@uwaterloo.ca">abhi.agrahari</maintainer>
@@ -16,6 +16,7 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>csv</depend>
   <depend>sqlite3</depend>
   <depend>rosbag2</depend>

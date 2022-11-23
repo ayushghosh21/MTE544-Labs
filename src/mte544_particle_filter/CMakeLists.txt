@@ -4,6 +4,21 @@ project(mte544_particle_filter)
 find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 
+
+find_package(std_msgs REQUIRED)
+
+find_package(sensor_msgs REQUIRED)
+
+
+find_package(geometry_msgs REQUIRED)
+
+find_package(visualization_msgs REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_py REQUIRED)
+
+
+
+
 install(DIRECTORY
   launch
   src
