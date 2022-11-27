@@ -28,12 +28,15 @@ class AStarClient(Node):
     def initial_pose_callback(self, msg):
         if self.initial_pose is None:
             self.initial_pose = msg
-            print(self.initial_pose)
+            self.get_logger().info(f"Initialize position: {self.initial_pose.pose.pose.position.x, self.initial_pose.pose.pose.position.y}")
+            #print(self.initial_pose)
 
     def goal_pose_callback(self, msg):
         if self.goal_pose is None:
             self.goal_pose = msg
-            print(self.goal_pose)
+            self.get_logger().info(f"Goal position: {self.goal_pose.pose.position.x, self.goal_pose.pose.position.y}")
+            
+            #print(self.goal_pose)
 
 
     def send_goal(self, initial_x=None, initial_y=None, goal_x=None, goal_y=None):
@@ -77,6 +80,8 @@ class AStarClient(Node):
         goal_handle = future.result()
         if not goal_handle.accepted:
             self.get_logger().info('Goal rejected :(')
+            self.goal_pose = None
+            rclpy.shutdown()
             return
 
         self.get_logger().info('Goal accepted :)')
@@ -86,7 +91,8 @@ class AStarClient(Node):
 
     def get_result_callback(self, future):
         result = future.result().result
-        self.get_logger().info('Result: {0}'.format(result.reached_goal))
+        self.get_logger().info('Goal Reached: {0}'.format(result.reached_goal))
+        self.goal_pose = None
         rclpy.shutdown()
 
 

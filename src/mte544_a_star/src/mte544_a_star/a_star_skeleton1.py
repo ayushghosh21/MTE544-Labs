@@ -52,40 +52,43 @@ def astar(maze: np.ndarray, start, end):
     # Create start and end node
     start_node = node(None, start)
     end_node = node(None, end)
+    if (start[0] >= 0 and start[1] >= 0 and start[0] < maze.shape[0] and start[1] < maze.shape[1]):
 
-    # Initialize both open and closed list
-    open_list = []
-    path = queue()
-    visited = np.full(maze.shape, False)
-    visited[start_node.position[0],start_node.position[1]] = True
-    # Add the start node
-    heapq.heappush(open_list, (0 ,(start_node, path))) # Priority queue using heappush, adding the starting node 
-    
-    # Loop until you find the end node
+        if (end[0] >= 0 and end[1] >= 0 and end[0] < maze.shape[0] and end[1] < maze.shape[1]):
+            # Initialize both open and closed list
+            open_list = []
+            path = queue()
+            visited = np.full(maze.shape, False)
+            visited[start_node.position[0],start_node.position[1]] = True
+            # Add the start node
+            heapq.heappush(open_list, (0 ,(start_node, path))) # Priority queue using heappush, adding the starting node 
+            
+            # Loop until you find the end node
+            
+            while len(open_list) > 0:
+                # Get the current node
+                item = heapq.heappop(open_list) 
+                current_node = item[1][0]
+                cost = current_node.g + 1
+                p = item[1][1].copy()
+                p.append(current_node.position)
+                # Found the goal, you can also implement what should happen if there is no possible path
+                if current_node == end_node:
+                    # Complete here code to return the shortest path found
+                    return p, cost
 
-    while len(open_list) > 0:
+                # Complete here code to generate children, which are the neighboring nodes. You should use 4 or 8 points connectivity for a grid.
 
-        # Get t he current node
-        item = heapq.heappop(open_list) 
-        current_node = item[1][0]
-        cost = current_node.g + 1
-        p = item[1][1].copy()
-        p.append(current_node.position)
-        # Found the goal, you can also implement what should happen if there is no possible path
-        if current_node == end_node:
-            # Complete here code to return the shortest path found
-            return p, cost
+                for adj in dirVal:
+                    nxt_pos = tuple(np.add(current_node.position ,adj))
+                    if (isLegal(maze, visited, nxt_pos)):
+                        est_cost = cost + 1 + heuristic2(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                        nxt_node = node(None, nxt_pos)
+                        nxt_node.g = cost
+                        heapq.heappush(open_list, (est_cost, (nxt_node, p)))
+                        visited[nxt_pos[0],nxt_pos[1]] = True
 
-        # Complete here code to generate children, which are the neighboring nodes. You should use 4 or 8 points connectivity for a grid.
-
-        for adj in dirVal:
-            nxt_pos = tuple(np.add(current_node.position ,adj))
-            if (isLegal(maze, visited, nxt_pos)):
-                est_cost = cost + 1 + heuristic2(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
-                nxt_node = node(None, nxt_pos)
-                nxt_node.g = cost
-                heapq.heappush(open_list, (est_cost, (nxt_node, p)))
-                visited[nxt_pos[0],nxt_pos[1]] = True
+    return [], 0
         
 
 def find_path(start: tuple, goal: tuple, occupancy_grid):
