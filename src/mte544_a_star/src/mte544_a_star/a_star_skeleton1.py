@@ -4,7 +4,7 @@ import yaml
 from scipy.ndimage import rotate
 import heapq 
 from collections import deque as queue
-
+import math
 # List containing directions for neighboring indices (i,j)
 dirVal = [ (1,0), (0,1), (1,1), (1,-1), (-1, 1), (-1, -1), (-1,0), (0,-1)]
 
@@ -43,6 +43,9 @@ class node():
 def heuristic(x1,y1,x2,y2): # heuristic function based on the manhattan distance between the points x1,y1 x2,y2
     return abs(x1-x2) + abs(y1-y2) 
 
+def heuristic2(x1,y1,x2,y2): # heuristic function based on the manhattan distance between the points x1,y1 x2,y2
+    return max(abs(x1-x2),abs(y1-y2) )
+
 def astar(maze: np.ndarray, start, end):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
 
@@ -71,14 +74,14 @@ def astar(maze: np.ndarray, start, end):
         # Found the goal, you can also implement what should happen if there is no possible path
         if current_node == end_node:
             # Complete here code to return the shortest path found
-            return p
+            return p, cost
 
         # Complete here code to generate children, which are the neighboring nodes. You should use 4 or 8 points connectivity for a grid.
 
         for adj in dirVal:
             nxt_pos = tuple(np.add(current_node.position ,adj))
             if (isLegal(maze, visited, nxt_pos)):
-                est_cost = cost + 1 + heuristic(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                est_cost = cost + 1 + heuristic2(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                 nxt_node = node(None, nxt_pos)
                 nxt_node.g = cost
                 heapq.heappush(open_list, (est_cost, (nxt_node, p)))
@@ -88,14 +91,18 @@ def astar(maze: np.ndarray, start, end):
 def find_path(start: tuple, goal: tuple, occupancy_grid):
     
     # Compute the path with A*
-    path = np.array(list(astar(occupancy_grid, start, goal)))
+    path, cost = astar(occupancy_grid, start, goal)
+    path = np.array(list(path))
+    #print(cost*0.05)
     maze_plot=np.transpose(np.nonzero(occupancy_grid))
 
-    plt.plot(maze_plot[:,0], maze_plot[:,1], '.',markersize=2)
+    # plt.plot(maze_plot[:,0], maze_plot[:,1], '.',markersize=2)
     
-    if not np.any(path): # If path is empty, will be NaN, check if path is NaN
-        print("No path found")
-    else:
-        plt.plot(path[:,0], path[:,1], linewidth=3)
-    plt.grid()
-    plt.show()
+    # if not np.any(path): # If path is empty, will be NaN, check if path is NaN
+    #     print("No path found")
+    # else:
+    #     plt.plot(path[:,0], path[:,1], linewidth=3)
+    # plt.grid()
+    # plt.show()
+
+    return path, cost

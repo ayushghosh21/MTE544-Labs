@@ -57,10 +57,20 @@ class AStarActionServer(Node):
             #plt.plot(maze_plot[:,0], maze_plot[:,1], '.')
             #plt.show()
 
-            start = (250, 150)
-            goal =  (50, 150)
-            find_path(start, goal, self.occupancy_map)
 
+            ## KEEP IT FOR TESTING!!!
+            # start = (250, 150)
+            # goal =  (50, 150)
+            # [path, cost] = find_path(start, goal, self.occupancy_map)
+
+            # path_scale = path*self.map_res
+            # path_cart = path_scale + self.origin
+
+            # dist = cost*self.map_res
+            # print(dist)
+            # print(path_cart.shape)
+            # plt.plot(path_cart[:, 0], path_cart[:, 1])
+            # plt.show()
 
     def execute_callback(self, goal_handle):
         self.get_logger().info('Executing goal...')
@@ -77,7 +87,18 @@ class AStarActionServer(Node):
         start = (goal_handle.request.initial_x, goal_handle.request.initial_y)
         goal =  (goal_handle.request.goal_x, goal_handle.request.goal_y)
         
-        find_path(start, goal, self.occupancy_map)
+        # start = (250, 150)
+        # goal =  (50, 150)
+        [path, cost] = find_path(start, goal, self.occupancy_map)
+
+        path_scale = path*self.map_res
+        path_cart = path_scale + self.origin
+
+        dist = cost*self.map_res
+        print(dist)
+        print(path_cart.shape)
+        # plt.plot(path_cart[:, 0], path_cart[:, 1])
+        # plt.show()
         
         # Each iteration of P control
         feedback_msg = Move2Goal.Feedback()
