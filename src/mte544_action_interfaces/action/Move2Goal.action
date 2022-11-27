@@ -1,0 +1,13 @@
+#goal definition
+float32 initial_x
+float32 initial_y
+float32 goal_x
+float32 goal_y
+---
+#result definition
+bool reached_goal
+---
+#feedback definition
+geometry_msgs/PoseStamped current_pose
+builtin_interfaces/Duration navigation_time
+float32 distance_remaining
