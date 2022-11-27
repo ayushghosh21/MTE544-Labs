@@ -81,7 +81,7 @@ def astar(maze: np.ndarray, start, end):
         for adj in dirVal:
             nxt_pos = tuple(np.add(current_node.position ,adj))
             if (isLegal(maze, visited, nxt_pos)):
-                est_cost = cost + 1 + heuristic2(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                est_cost = cost + 1 + heuristic(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                 nxt_node = node(None, nxt_pos)
                 nxt_node.g = cost
                 heapq.heappush(open_list, (est_cost, (nxt_node, p)))

@@ -59,17 +59,30 @@ class AStarActionServer(Node):
 
 
             ## KEEP IT FOR TESTING!!!
-            # start = (250, 150)
+
+            # start = (177, 117)
             # goal =  (50, 150)
-            # [path, cost] = find_path(start, goal, self.occupancy_map)
+            # goal = [0, -0.08]
+            
+            # goal[0] -= self.origin[0]
+            # goal[1] -= self.origin[1]
+
+            # goal[0] /= self.map_res
+            # goal[1] /= self.map_res
+            
+            # goal[0] = round(goal[0])
+            # goal[1] = round(goal[1])
+
+            # #print(goal)
+            # [path, cost] = find_path(start, (goal[0], goal[1]), self.occupancy_map)
 
             # path_scale = path*self.map_res
             # path_cart = path_scale + self.origin
 
             # dist = cost*self.map_res
             # print(dist)
-            # print(path_cart.shape)
-            # plt.plot(path_cart[:, 0], path_cart[:, 1])
+            # #print(path_cart.shape)
+            # #plt.plot(path_cart[:, 0], path_cart[:, 1])
             # plt.show()
 
     def execute_callback(self, goal_handle):
