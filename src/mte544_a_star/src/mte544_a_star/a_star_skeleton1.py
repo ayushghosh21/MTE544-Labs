@@ -44,7 +44,7 @@ def heuristic(x1,y1,x2,y2): # heuristic function based on the manhattan distance
     return abs(x1-x2) + abs(y1-y2) 
 
 def heuristic2(x1,y1,x2,y2): # heuristic function based on the manhattan distance between the points x1,y1 x2,y2
-    return max(abs(x1-x2),abs(y1-y2) )
+    return max(abs(x1-x2),abs(y1-y2))
 
 def astar(maze: np.ndarray, start, end):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
@@ -81,7 +81,7 @@ def astar(maze: np.ndarray, start, end):
         for adj in dirVal:
             nxt_pos = tuple(np.add(current_node.position ,adj))
             if (isLegal(maze, visited, nxt_pos)):
-                est_cost = cost + 1 + heuristic(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                est_cost = cost + 1 + heuristic2(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                 nxt_node = node(None, nxt_pos)
                 nxt_node.g = cost
                 heapq.heappush(open_list, (est_cost, (nxt_node, p)))

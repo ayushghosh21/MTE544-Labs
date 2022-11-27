@@ -23,6 +23,7 @@ find_package(mte544_action_interfaces REQUIRED)
 install(DIRECTORY
   launch
   src
+  param
   DESTINATION share/${PROJECT_NAME})
 
 # Install Python executables
