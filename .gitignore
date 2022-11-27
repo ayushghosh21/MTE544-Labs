@@ -3,4 +3,4 @@ install
 log
 
 src/*
-!src/mte544_particle_filter
+!src/mte544_a_star
