@@ -7,6 +7,7 @@ import time
 from rclpy.action import ActionServer
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from builtin_interfaces.msg import Duration
 import matplotlib.pyplot as plt
 from nav_msgs.msg import OccupancyGrid
@@ -97,9 +98,16 @@ class AStarActionServer(Node):
             else:
                 break
         
-        start = (goal_handle.request.initial_x, goal_handle.request.initial_y)
-        goal =  (goal_handle.request.goal_x, goal_handle.request.goal_y)
+        initial_pose = goal_handle.request.initial_pose
         
+        # initial_pose.pose.pose.position.x
+        # initial_pose.pose.pose.position.y
+        
+
+        start = self.coord2pixel((initial_pose.pose.pose.position.x, initial_pose.pose.pose.position.y))
+        goal =  self.coord2pixel((goal_handle.request.goal_x, goal_handle.request.goal_y))
+        
+
         # start = (250, 150)
         # goal =  (50, 150)
         [path, cost] = find_path(start, goal, self.occupancy_map)
@@ -110,12 +118,11 @@ class AStarActionServer(Node):
         dist = cost*self.map_res
         print(dist)
         print(path_cart.shape)
-        # plt.plot(path_cart[:, 0], path_cart[:, 1])
-        # plt.show()
+        #plt.plot(path_cart[:, 0], path_cart[:, 1])
+        plt.show()
         
         # Each iteration of P control
         feedback_msg = Move2Goal.Feedback()
-        
         feedback_msg.current_pose.pose.position.x
         feedback_msg.current_pose.pose.position.y
 
@@ -129,7 +136,7 @@ class AStarActionServer(Node):
         goal_handle.succeed()
 
         result = Move2Goal.Result()
-        result.goal_reached = True
+        result.reached_goal = True
 
 
 
@@ -137,10 +144,15 @@ class AStarActionServer(Node):
         # goal_handle.abort()
 
         # result = Move2Goal.Result()
-        # result.goal_reached = False
+        # result.reached_goal = False
 
         return result
 
+    def coord2pixel(self, point):
+        return (
+            round((point[0] - self.origin[0])/self.map_res), 
+            round((point[1] - self.origin[1])/self.map_res)
+        ) 
 
 def main(args=None):
     rclpy.init(args=args)

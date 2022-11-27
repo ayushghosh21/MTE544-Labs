@@ -96,13 +96,13 @@ def find_path(start: tuple, goal: tuple, occupancy_grid):
     #print(cost*0.05)
     maze_plot=np.transpose(np.nonzero(occupancy_grid))
 
-    # plt.plot(maze_plot[:,0], maze_plot[:,1], '.',markersize=2)
+    plt.plot(maze_plot[:,0], maze_plot[:,1], '.',markersize=2)
     
-    # if not np.any(path): # If path is empty, will be NaN, check if path is NaN
-    #     print("No path found")
-    # else:
-    #     plt.plot(path[:,0], path[:,1], linewidth=3)
-    # plt.grid()
-    # plt.show()
+    if not np.any(path): # If path is empty, will be NaN, check if path is NaN
+        print("No path found")
+    else:
+        plt.plot(path[:,0], path[:,1], linewidth=3)
+    plt.grid()
+    #plt.show()
 
     return path, cost

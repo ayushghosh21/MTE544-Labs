@@ -1,6 +1,5 @@
 #goal definition
-float32 initial_x
-float32 initial_y
+geometry_msgs/PoseWithCovarianceStamped initial_pose
 float32 goal_x
 float32 goal_y
 ---
