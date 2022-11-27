@@ -33,8 +33,6 @@ class node():
         self.position = position
 
         self.g = 0  #Cost
-        self.h = 0  #Heuristic
-        self.f = 0  #Total
 
     def __eq__(self, other):
         return self.position == other.position
@@ -87,42 +85,17 @@ def astar(maze: np.ndarray, start, end):
                 visited[nxt_pos[0],nxt_pos[1]] = True
         
 
-def main():
-
-    map_file = "Office_Map/map.pgm"
-
-    with open(map_file, 'rb') as pgmf:
-        im = plt.imread(pgmf)
-
-    # Inverting obstacle values from 0 to 1 
-    maze = ~im.astype(bool)
-
-    yaml_file = "Office_Map/map.yaml"
-
-    with open(yaml_file, 'r') as stream:
-        data_loaded = yaml.safe_load(stream)
-
-    # Store map parameters
-    origin = data_loaded['origin']
-    map_res = data_loaded['resolution']
-
-    # Define here your start and end points
-    start = (56, 170)
-    end = (35, 100)
+def find_path(start: tuple, goal: tuple, occupancy_grid):
     
-    # Compute the path with your implementation of Astar
-    path = np.array(list(astar(maze, start, end)))
-    maze_plot=np.transpose(np.nonzero(maze))
+    # Compute the path with A*
+    path = np.array(list(astar(occupancy_grid, start, goal)))
+    maze_plot=np.transpose(np.nonzero(occupancy_grid))
 
-    plt.plot(maze_plot[:,0], maze_plot[:,1], '.')
+    plt.plot(maze_plot[:,0], maze_plot[:,1], '.',markersize=2)
     
     if not np.any(path): # If path is empty, will be NaN, check if path is NaN
         print("No path found")
     else:
-        plt.plot(path[:,0], path[:,1],linewidth=3)
+        plt.plot(path[:,0], path[:,1], linewidth=3)
     plt.grid()
     plt.show()
-
-
-if __name__ == '__main__':
-    main()
