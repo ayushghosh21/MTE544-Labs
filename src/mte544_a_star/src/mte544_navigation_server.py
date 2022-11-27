@@ -14,10 +14,11 @@ from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 from std_msgs.msg import Header
 from nav_msgs.msg import MapMetaData
+from nav_msgs.msg import Path
 from mte544_a_star.a_star_skeleton1 import find_path
 import numpy as np
 from mte544_action_interfaces.action import Move2Goal
-from scipy.ndimage import rotate
+from skimage.transform import downscale_local_mean
 
 class AStarActionServer(Node):
 
@@ -32,6 +33,9 @@ class AStarActionServer(Node):
         # create the subscriber object
         self.global_map_sub = self.create_subscription(
             OccupancyGrid, '/global_costmap/costmap', self.map_callback, QoSProfile(depth=300, reliability=ReliabilityPolicy.BEST_EFFORT))
+
+        # Create path visualizer publisher 
+        self.path_pub = self.create_publisher(Path, '/path_viz', 10)
 
         # Initialize map parameters to default values 
         self.origin = [0,0,0]
@@ -50,7 +54,8 @@ class AStarActionServer(Node):
             self.width = msg.info.width
             self.map_res = msg.info.resolution
             self.occupancy_map = np.reshape(msg.data, (self.height, self.width))
-            
+            self.occupancy_map = downscale_local_mean(self.occupancy_map, (2,2))
+            self.map_res *= 2
             self.occupancy_map[self.occupancy_map < 65] = 0
             self.occupancy_map = np.transpose(self.occupancy_map).astype(bool)
 
@@ -115,13 +120,26 @@ class AStarActionServer(Node):
         path_scale = path*self.map_res
         path_cart = path_scale + self.origin
 
+        path_msg = Path()
+        path_msg.header.frame_id = 'map'
+        for pose in path_cart:
+            point = PoseStamped()
+
+            point.pose.position.x = pose[0]
+            point.pose.position.y = pose[1]
+
+            path_msg.poses.append(point)
+
+        self.path_pub.publish(path_msg)
         dist = cost*self.map_res
         print(dist)
         print(path_cart.shape)
         #plt.plot(path_cart[:, 0], path_cart[:, 1])
-        plt.show()
+        #plt.show()
         
         # Each iteration of P control
+
+        # Use the points in path_cart variable for P controller. path_cart is list of cartestion points in plan
         feedback_msg = Move2Goal.Feedback()
         feedback_msg.current_pose.pose.position.x
         feedback_msg.current_pose.pose.position.y
@@ -150,8 +168,8 @@ class AStarActionServer(Node):
 
     def coord2pixel(self, point):
         return (
-            round((point[0] - self.origin[0])/self.map_res), 
-            round((point[1] - self.origin[1])/self.map_res)
+            round((point[0] - self.origin[0])/(self.map_res)), 
+            round((point[1] - self.origin[1])/(self.map_res))
         ) 
 
 def main(args=None):
