@@ -60,10 +60,11 @@ class AStarActionServer(Node):
         # P-controller items
         self.publisher_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         # The P-controller runs in the global frame. 
-        self.curr_pose = Pose() # holds current position of turtlebot. Updated when we receive a new message
-        self.setpoint_pose = Pose() # self.goal_pose defaults to 0 till we receive a new setpoint from external node
+        self.curr_pose = Pose() # holds current position of turtlebot.
+        self.setpoint_pose = Pose() # defaults to 0 till we receive a new setpoint from external node
+        self.vel_msg = Twist() # holds velocity command to send to turtlebot
         # Used for finding TF between base_footprint frame and map (i.e. robot position)
-        # https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
+        # See https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.reached_intermediate_goal = False
@@ -180,12 +181,13 @@ class AStarActionServer(Node):
         # publish commanded velocities to drive the robot from its current position to the intermediate goal pose via /cmd_vel topic
 
         for point in self.path_cart:
-            break # For now,
+            self.get_logger().info(f"Current Pose: [{self.curr_pose.x},{self.curr_pose.y},{self.curr_pose.theta}]")
             self.get_logger().info(f"Going to: {point}")
             self.setpoint_pose.x = point[0]
             self.setpoint_pose.y = point[1]
             self.reached_intermediate_goal = False
             while not self.reached_intermediate_goal:
+                self.update_current_pose()
                 self.run_control_loop_once() # run 1 iteration of P control
                 feedback_msg = Move2Goal.Feedback()
                 feedback_msg.current_pose.pose.position.x = self.curr_pose.x
@@ -199,18 +201,11 @@ class AStarActionServer(Node):
         result = Move2Goal.Result()
         result.reached_goal = True
 
-        # Else goal is unreachable for some reason while taversing
-        # goal_handle.abort()
-        # result = Move2Goal.Result()
-        # result.reached_goal = False
-
         return result
     
     #P-controller helper functions
-    def handle_pose_update(self):
-        """Save current pose of Turtlebot
-        Find the transform between base_footprint and map
-        """
+    def update_current_pose(self):
+        """Get current pose of Turtlebot. Find the transform between base_footprint and map"""
 
         from_frame_rel = 'base_footprint'
         to_frame_rel = 'map'
@@ -290,26 +285,20 @@ class AStarActionServer(Node):
         return Kp * self.get_angle_error()
 
     def run_control_loop_once(self):
-        velocity_message = Twist()
         # If our control loop is still active when the robot is really close, then we will start seeing unnecessary osciliations
         # due to control inaccuracies. e.g. Turtlebot jittering back and forth. 
         # So, if turtlebot is closer than 0.1 to setpoint, temporarily disable control loop
         # This avoids oscillation
         if self.get_position_error() >= 0.1:
             self.notified_planner = False # will need to notify planner, once we have reached setpoint
-            velocity_message.linear.x = self.get_linear_velocity() # move towards setpoint
-            velocity_message.linear.y = 0.0
-            velocity_message.linear.z = 0.0
-            velocity_message.angular.x = 0.0
-            velocity_message.angular.y = 0.0
-            velocity_message.angular.z = self.get_angular_velocity() # orient towards setpoint
-            self.publisher_vel.publish(velocity_message)
+            self.vel_msg.linear.x = self.get_linear_velocity() # move towards setpoint
+            self.vel_msg.angular.z = self.get_angular_velocity() # orient towards setpoint
         else:
             self.reached_intermediate_goal = True
             # Stopping our robot after the movement is over.
-            velocity_message.linear.x = 0.0
-            velocity_message.angular.z = 0.0
-        self.publisher_vel.publish(velocity_message)
+            self.vel_msg.linear.x = 0.0
+            self.vel_msg.angular.z = 0.0
+        self.publisher_vel.publish(self.vel_msg)
 
 def main(args=None):
     rclpy.init(args=args)
