@@ -50,32 +50,27 @@ class AStarActionServer(Node):
         self.path_cart = None
 
     def goal_callback(self, goal_request):
-        # run A star
-        # Access global map and pass to A star function
+        """Determine whether to accept or reject the goal"""
+
+        # Access global map and pass to A* function
         while True:
             if self.occupancy_map is None:
                 pass
             else:
                 break
         initial_pose = goal_request.initial_pose
-        
-        # initial_pose.pose.pose.position.x
-        # initial_pose.pose.pose.position.y
-        
 
         start = self.coord2pixel((initial_pose.pose.pose.position.x, initial_pose.pose.pose.position.y))
         goal =  self.coord2pixel((goal_request.goal_x, goal_request.goal_y))
-        
 
         # start = (250, 150)
         # goal =  (50, 150)
+        # Run A*
         [path, cost] = find_path(start, goal, self.occupancy_map)
         
         if path.size == 0:
-            # goal_handle.abort()
-            # result = Move2Goal.Result()
-            # result.reached_goal = False
-
+            # Failed to find a path to the goal
+            self.get_logger().info(f"No path found")
             return GoalResponse.REJECT
 
         path_scale = path*self.map_res
@@ -93,7 +88,7 @@ class AStarActionServer(Node):
 
         self.path_pub.publish(path_msg)
         dist = cost*self.map_res
-        self.get_logger().info(f"Path distance{dist}")
+        self.get_logger().info(f"Path distance:{dist}")
         self.get_logger().info(f"Number of points: {self.path_cart.shape[0]}")
         #plt.plot(self.path_cart[:, 0], self.path_cart[:, 1])
         #plt.show()
@@ -147,28 +142,41 @@ class AStarActionServer(Node):
             # plt.show()
 
     def execute_callback(self, goal_handle):
-        self.get_logger().info('Executing goal...')
+        """Follow A* planned path using a P controller"""
+
+        self.get_logger().info('Executing goal...') 
         
-        # Each iteration of P control
         # Use the points in path_cart variable for P controller. path_cart is list of cartestion points in plan
-        feedback_msg = Move2Goal.Feedback()
-        feedback_msg.current_pose.pose.position.x
-        feedback_msg.current_pose.pose.position.y
 
-        goal_handle.publish_feedback(feedback_msg)
+        # P controller pseduocode
+        # P Controller should subscribe to the tf topic to determine current pose
+        # calculate error between current pose and intermediate goal pose
+        # generate control signals (velocities) required to reach intermediate goal pose
+        # publish commanded velocities to drive the robot from its current position to the intermediate goal pose via /cmd_vel topic
+
+        for point in self.path_cart:
+            break # For now,
+            self.get_logger().info(f"Going to: {point}")
+            reached_goal = False
+            while not reached_goal:
+                #TODO: add P controller
+                #TODO: run 1 iteration of P control
+
+                feedback_msg = Move2Goal.Feedback()
+                feedback_msg.current_pose.pose.position.x
+                feedback_msg.current_pose.pose.position.y
+                goal_handle.publish_feedback(feedback_msg)
+                
+                rclpy.spin_once(self)
         
-
-        ## After we reach the goal position
+        #Have now reached the final goal
+        self.get_logger().info('Reached goal')
         goal_handle.succeed()
-
         result = Move2Goal.Result()
         result.reached_goal = True
 
-
-
         # Else goal is unreachable for some reason while taversing
         # goal_handle.abort()
-
         # result = Move2Goal.Result()
         # result.reached_goal = False
 
@@ -182,11 +190,8 @@ class AStarActionServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     a_star_action_server = AStarActionServer()
-
     rclpy.spin(a_star_action_server)
-
 
 if __name__ == '__main__':
     main()
