@@ -167,7 +167,7 @@ class AStarActionServer(Node):
                 feedback_msg.current_pose.pose.position.y
                 goal_handle.publish_feedback(feedback_msg)
                 
-                rclpy.spin_once(self)
+                rclpy.spin_once(self, timeout_sec=0.1) # 10Hz spin
         
         #Have now reached the final goal
         self.get_logger().info('Reached goal')
