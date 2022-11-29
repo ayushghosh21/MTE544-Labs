@@ -269,7 +269,10 @@ class AStarActionServer(Node):
     def get_linear_velocity(self, Kp=1.2) -> float:
         """Proportional controller for Position"""
         # As turtlebot gets closer to the setpoint, we automatically decrease it's linear velocity
-        return Kp * self.get_position_error()
+        if abs(self.get_angle_error()) > math.pi/3.0:
+            return 0.0
+        
+        return min(Kp * self.get_position_error(), 0.3) if self.get_position_error() > 0 else max(Kp * self.get_position_error(), -0.3)
 
     def get_required_steering(self):
         """Calculate change in angle needed for turtlebot to face the setpoint"""
@@ -282,7 +285,7 @@ class AStarActionServer(Node):
     def get_angular_velocity(self, Kp=6.2) -> float:
         '''Proportional controller for Required orientation to move towards setpoint position'''
         # As turtlebot faces the setpoint position more, we automatically decrease angular velocity
-        return Kp * self.get_angle_error()
+        return min(Kp * self.get_angle_error(), 1.9) if self.get_angle_error() > 0 else max(Kp * self.get_angle_error(), -1.9)
 
     def run_control_loop_once(self):
         # If our control loop is still active when the robot is really close, then we will start seeing unnecessary osciliations
