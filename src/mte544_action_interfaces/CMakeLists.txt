@@ -23,6 +23,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/Move2Goal.action"
+  "srv/SetPose.srv"
   DEPENDENCIES builtin_interfaces geometry_msgs std_msgs action_msgs
   )
 
