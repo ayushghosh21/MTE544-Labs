@@ -9,16 +9,13 @@ from geometry_msgs.msg import PoseStamped
 
 from mte544_action_interfaces.action import Move2Goal
 
-
 class AStarClient(Node):
 
     def __init__(self):
         super().__init__('a_star_action_client')
         self._action_client = ActionClient(self, Move2Goal, 'mte_544_a_star')
-        
         self.initial_pose_sub = self.create_subscription(
             PoseWithCovarianceStamped, '/initialpose', self.initial_pose_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
-
         self.goal_pose_sub = self.create_subscription(
             PoseStamped, '/goal_pose', self.goal_pose_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
 
@@ -48,8 +45,6 @@ class AStarClient(Node):
                     rclpy.spin_once(self)
                 else:
                     break
-            
-
             while True:
                 if self.goal_pose is None:
                     rclpy.spin_once(self)
@@ -57,23 +52,18 @@ class AStarClient(Node):
                     break
             
             goal_msg.initial_pose = self.initial_pose
-            
             goal_msg.goal_x = self.goal_pose.pose.position.x
             goal_msg.goal_y = self.goal_pose.pose.position.y
 
         else:
             goal_msg.initial_pose = PoseWithCovarianceStamped()
-
             goal_msg.initial_pose.pose.pose.position.x = initial_x
             goal_msg.initial_pose.pose.pose.position.y = initial_y
-            
             goal_msg.goal_x = goal_x
             goal_msg.goal_y = goal_y
         
         self._action_client.wait_for_server()
-
         self._send_goal_future = self._action_client.send_goal_async(goal_msg)
-
         self._send_goal_future.add_done_callback(self.goal_response_callback)
 
     def goal_response_callback(self, future):
@@ -84,8 +74,7 @@ class AStarClient(Node):
             rclpy.shutdown()
             return
 
-        self.get_logger().info('Goal accepted :)')
-
+        self.get_logger().info('Goal accepted')
         self._get_result_future = goal_handle.get_result_async()
         self._get_result_future.add_done_callback(self.get_result_callback)
 
