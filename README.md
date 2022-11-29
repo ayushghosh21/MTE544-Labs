@@ -1,52 +1,22 @@
-# MTE 544 Lab 2 - Particle Filter Localization
+# MTE 544 Lab 3 - Path Planning and Control
 > By Group 8, Ayush Ghosh, Nick Shaju, Abhinav Agrahari
 
 
 ## Setup
-To setup the `mte544_particle_filter` package, build and source this workspace: 
+To setup the `mte544_a_star` package, build and source this workspace: 
 
-```colcon build```
+```bash
+pip install scikit-image
+colcon build --symlink-install
+source install/setup.bash
+```
 
-```source install/setup.bash```
+## Running
 
+In 4 seperate terminals:
+- `ros2 launch turtlebot3_gazebo turtlebot3_house.launch.py`
+- `ros2 launch mte544_a_star mte544_a_star.launch.py`
+- `ros2 run mte544_a_star mte544_navigation_server.py`
+- `ros2 run mte544_a_star mte544_navigation_client.py`
 
-
-## Point 2 Localization
-Ensure the workspace is sourced in the terminal:
-
-```source install/setup.bash```
-
-1. Run the sample launch file:
-
-```ros2 launch mte544_particle_filter particle_filter.launch.py```
-
-
-2. Wait for the launch file to finish loading (it will take at least 2.5 seconds). A map will appear in Rviz2 and a message displaying "Ready!" will show in the terminal.
-
-Note: If the map does not appear, try re-running the launch file.
-
-Open a new terminal in the root of this workspace, and run the Point 2 bag file:
-
-```ros2 bag play src/mte544_particle_filter/bag_files/point2```
-
-Wait a few moments for the bag file to start sending data. The particles and super-imposed lidar scan will be updated for each iteration of the particle filter.
-
-## Point 5 Localization
-Ensure the workspace is sourced in the terminal:
-
-```source install/setup.bash```
-
-1. Run the sample launch file:
-
-```ros2 launch mte544_particle_filter particle_filter.launch.py```
-
-
-2. Wait for the launch file to finish loading (it will take at least 2.5 seconds). A map will appear in Rviz2 and a message displaying "Ready!" will show in the terminal.
-
-Note: If the map does not appear, try re-running the launch file.
-
-Open a new terminal in the root of this workspace, and run the Point 5 bag file:
-
-```ros2 bag play src/mte544_particle_filter/bag_files/point5```
-
-Wait a few moments for the bag file to start sending data. The particles and super-imposed lidar scan will be updated for each iteration of the particle filter.
+Then through RViz, give a `2D Pose estimate` and a `2D Goal Pose`
