@@ -5,8 +5,9 @@ from scipy.ndimage import rotate
 import heapq 
 from collections import deque as queue
 import math
+
 # List containing directions for neighboring indices (i,j)
-dirVal = [ (1,0), (0,1), (1,1), (1,-1), (-1, 1), (-1, -1), (-1,0), (0,-1)]
+dirVal = [ (1,0), (0,1), (-1,0), (0,-1), (1,1), (1,-1), (-1, 1), (-1, -1)]
 
 # Function to check if a cell to is be visited or not
 
@@ -43,7 +44,7 @@ class node():
 def heuristic(x1,y1,x2,y2): # heuristic function based on the manhattan distance between the points x1,y1 x2,y2
     return abs(x1-x2) + abs(y1-y2) 
 
-def heuristic2(x1,y1,x2,y2): # heuristic function based on the manhattan distance between the points x1,y1 x2,y2
+def heuristic2(x1,y1,x2,y2): # heuristic function based on diagonal distance
     return max(abs(x1-x2),abs(y1-y2))
 
 def astar(maze: np.ndarray, start, end):
@@ -69,7 +70,7 @@ def astar(maze: np.ndarray, start, end):
                 # Get the current node
                 item = heapq.heappop(open_list) 
                 current_node = item[1][0]
-                cost = current_node.g + 1
+                cost = current_node.g
                 p = item[1][1].copy()
                 p.append(current_node.position)
                 # Found the goal, you can also implement what should happen if there is no possible path
@@ -80,11 +81,15 @@ def astar(maze: np.ndarray, start, end):
                 # Complete here code to generate children, which are the neighboring nodes. You should use 4 or 8 points connectivity for a grid.
 
                 for adj in dirVal:
+                    move_cost = 1
+                    if abs(adj[0]) - abs(adj[1]) == 0:
+                        move_cost = 1.4
                     nxt_pos = tuple(np.add(current_node.position ,adj))
+
                     if (isLegal(maze, visited, nxt_pos)):
-                        est_cost = cost + 1 + heuristic2(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                        est_cost = cost + move_cost + heuristic(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                         nxt_node = node(None, nxt_pos)
-                        nxt_node.g = cost
+                        nxt_node.g = cost + move_cost
                         heapq.heappush(open_list, (est_cost, (nxt_node, p)))
                         visited[nxt_pos[0],nxt_pos[1]] = True
 
