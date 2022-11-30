@@ -17,7 +17,6 @@ source install/setup.bash
 In 4 seperate terminals:
 - `ros2 launch turtlebot3_gazebo turtlebot3_house.launch.py`
 - `ros2 launch mte544_a_star mte544_a_star.launch.py`
-- `ros2 run mte544_a_star mte544_navigation_server.py`
 - For defining goals in RViz:
   `ros2 run mte544_a_star mte544_navigation_client.py`
 
