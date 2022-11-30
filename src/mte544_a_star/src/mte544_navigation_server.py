@@ -126,8 +126,7 @@ class AStarActionServer(Node):
             self.occupancy_map = np.reshape(msg.data, (self.height, self.width))
             self.occupancy_map = downscale_local_mean(self.occupancy_map, (2,2))
             self.map_res *= 2
-            self.occupancy_map[self.occupancy_map < 65] = 0
-            self.occupancy_map = np.transpose(self.occupancy_map).astype(bool)
+            self.occupancy_map = np.transpose(self.occupancy_map)
 
             #maze_plot=np.transpose(np.nonzero(self.occupancy_map))
             #plt.plot(maze_plot[:,0], maze_plot[:,1], '.')

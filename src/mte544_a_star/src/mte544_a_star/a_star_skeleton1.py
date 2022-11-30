@@ -7,7 +7,7 @@ from collections import deque as queue
 import math
 
 # List containing directions for neighboring indices (i,j)
-dirVal = [ (1,0), (0,1), (-1,0), (0,-1), (1,1), (1,-1), (-1, 1), (-1, -1)]
+dirVal = [ (0,1), (1,1), (1,0),(0,-1), (1,-1), (-1,0), (-1, -1), (-1, 1)]
 
 # Function to check if a cell to is be visited or not
 
@@ -20,9 +20,9 @@ def isLegal(maze, visited, nxt_pos):
     #Check if index is visited
     if (visited[nxt_pos[0],nxt_pos[1]]):
         return False
-
-    #Check if index is the maze wall
-    if(maze[nxt_pos[0],nxt_pos[1]] == 1):
+    
+    #Don't move to nodes with 85% chance of being an obstacle
+    if (maze[nxt_pos[0], nxt_pos[1]] > 85.0): 
         return False
     return True
 
@@ -44,8 +44,12 @@ class node():
 def heuristic(x1,y1,x2,y2): # heuristic function based on the manhattan distance between the points x1,y1 x2,y2
     return abs(x1-x2) + abs(y1-y2) 
 
-def heuristic2(x1,y1,x2,y2): # heuristic function based on diagonal distance
-    return max(abs(x1-x2),abs(y1-y2))
+def heuristic_diag(x1,y1,x2,y2): # heuristic function based on diagonal distance
+    dx = abs(x1 - x2)
+    dy = abs(y1 - y2)
+    D = 1
+    D2 = 1.4
+    return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
 
 def astar(maze: np.ndarray, start, end):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
@@ -87,7 +91,9 @@ def astar(maze: np.ndarray, start, end):
                     nxt_pos = tuple(np.add(current_node.position ,adj))
 
                     if (isLegal(maze, visited, nxt_pos)):
-                        est_cost = cost + move_cost + heuristic(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                        prob = maze[nxt_pos[0],nxt_pos[1]]
+                        move_cost += prob/100
+                        est_cost = cost + move_cost + (prob/150) * heuristic_diag(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                         nxt_node = node(None, nxt_pos)
                         nxt_node.g = cost + move_cost
                         heapq.heappush(open_list, (est_cost, (nxt_node, p)))
