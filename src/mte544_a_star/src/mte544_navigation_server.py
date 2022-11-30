@@ -8,7 +8,8 @@ from rclpy.action import ActionServer, GoalResponse
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from builtin_interfaces.msg import Duration
+#from builtin_interfaces.msg import Duration
+from rclpy.duration import Duration 
 import matplotlib.pyplot as plt
 from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import ReliabilityPolicy, QoSProfile
@@ -115,7 +116,7 @@ class AStarActionServer(Node):
         return GoalResponse.ACCEPT
 
     def map_callback(self, msg):
-        
+
         if self.occupancy_map is None:
 
             self.origin = [msg.info.origin.position.x, msg.info.origin.position.y]
@@ -168,6 +169,7 @@ class AStarActionServer(Node):
 
     def execute_callback(self, goal_handle):
         """Follow A* planned path using a P controller"""
+        start_time = self.get_clock().now()
 
         self.get_logger().info('Executing goal...') 
         
@@ -178,7 +180,8 @@ class AStarActionServer(Node):
         # calculate error between current pose and intermediate goal pose
         # generate control signals (velocities) required to reach intermediate goal pose
         # publish commanded velocities to drive the robot from its current position to the intermediate goal pose via /cmd_vel topic
-
+        prev_pose = [self.curr_pose.x, self.curr_pose.y]
+        dist = 0
         for point in self.path_cart:
             self.get_logger().info(f"Current Pose: [{self.curr_pose.x:.3f},{self.curr_pose.y:.3f},{self.curr_pose.theta:.3f}]")
             self.get_logger().info(f"Going to: {point}")
@@ -188,10 +191,23 @@ class AStarActionServer(Node):
             while not self.reached_intermediate_goal:
                 self.update_current_pose()
                 self.run_control_loop_once() # run 1 iteration of P control
+                
+                dist += math.sqrt(
+                    math.pow(self.curr_pose.x - prev_pose[0], 2) + math.pow(self.curr_pose.y - prev_pose[1], 2)
+                )
+
+                prev_pose = [self.curr_pose.x, self.curr_pose.y]
                 feedback_msg = Move2Goal.Feedback()
                 feedback_msg.current_pose.pose.position.x = self.curr_pose.x
                 feedback_msg.current_pose.pose.position.y = self.curr_pose.y
+
+                elapsed_time = self.get_clock().now() - start_time
+
+                feedback_msg.navigation_time =  elapsed_time.to_msg()
+                feedback_msg.distance_remaining =  dist
+                
                 goal_handle.publish_feedback(feedback_msg)
+                
                 rclpy.spin_once(self, timeout_sec=0.1) # 10Hz spin
         
         #Have now reached the final goal
@@ -200,6 +216,9 @@ class AStarActionServer(Node):
         result = Move2Goal.Result()
         result.reached_goal = True
 
+        # Reset Occupancy map for next iteration
+        self.occupancy_map = None
+        
         return result
     
     #P-controller helper functions
@@ -320,7 +339,8 @@ class AStarActionServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     a_star_action_server = AStarActionServer()
-    rclpy.spin(a_star_action_server)
-
+    while True:
+        rclpy.spin_once(a_star_action_server)
+    rclpy.shutdown()
 if __name__ == '__main__':
     main()
