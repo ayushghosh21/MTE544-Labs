@@ -4,11 +4,17 @@ from ament_index_python.packages import get_package_share_directory
 import launch_ros
 import os
 
+
 def generate_launch_description():
+
+	# Default initial robot positions for gazebo simulation.
+	# Should be modified to match robot's actual position as needed.
+	initial_pose_x = 2
+	initial_pose_y = 0.5
+	initial_yaw = 0
 
 	lifecycle_nodes = [
 		'map_server',
-		# 'amcl',
 		'planner_server'
 	]
 
@@ -17,7 +23,7 @@ def generate_launch_description():
 	
 	return launch.LaunchDescription([
 		
-		# Start map_server and lifecycle node after 2 seconds 
+		# Start map_server and lifecycle node after 1.5 seconds 
 		launch.actions.TimerAction(
 			period=1.5,
 			actions=[
@@ -31,13 +37,6 @@ def generate_launch_description():
 			],
 		),
 
-        # launch_ros.actions.Node(
-        #     package='nav2_amcl',
-        #     executable='amcl',
-        #     name='amcl',
-        #     output='screen'),
-        #     #parameters=[{''}]),
-
         launch_ros.actions.Node(
             package='nav2_planner',
             executable='planner_server',
@@ -49,7 +48,7 @@ def generate_launch_description():
 		launch_ros.actions.Node(
 			package = "tf2_ros", 
 			executable = "static_transform_publisher",
-			arguments = ["2", "0.5", "0", "0", "0", "0", "map", "odom"]
+			arguments = [str(initial_pose_x), str(initial_pose_y), "0", str(initial_yaw), "0", "0", "map", "odom"]
 		),
 
         launch_ros.actions.Node(
