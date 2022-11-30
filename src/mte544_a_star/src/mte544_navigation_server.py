@@ -49,7 +49,7 @@ class AStarActionServer(Node):
 
         # Initialize map parameters to default values 
         self.origin = [0,0,0]
-        self.map_res = 0.03
+        self.map_res = 0.05
 
         # global costmap variable
         self.occupancy_map = None
