@@ -2,37 +2,31 @@
 
 import rclpy
 
-import time
-
 from rclpy.action import ActionServer, GoalResponse
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import PoseWithCovarianceStamped
-#from builtin_interfaces.msg import Duration
-from rclpy.duration import Duration 
 import matplotlib.pyplot as plt
 from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import ReliabilityPolicy, QoSProfile
-from std_msgs.msg import Header
-from nav_msgs.msg import MapMetaData
 from nav_msgs.msg import Path
 from mte544_a_star.a_star_skeleton1 import find_path
 import numpy as np
 from mte544_action_interfaces.action import Move2Goal
-from skimage.transform import downscale_local_mean
+from skimage.transform import downscale_local_mean # scale map
 
+import math
 from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
-from math import pow, atan2, sqrt
-import math
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 class AStarActionServer(Node):
+    """ROS2 Action Server that plans path to a goal pose using A* and then follows the path using P-controller"""
 
     def __init__(self):
         super().__init__('a_star_action_server')
+        # Setup Action server for receiving goal poses
         self._action_server = ActionServer(
             self,
             Move2Goal,
@@ -40,49 +34,49 @@ class AStarActionServer(Node):
             execute_callback = self.execute_callback,
             goal_callback = self.goal_callback,
         )
-        
-        # create the subscriber object
+        # create the subscriber object to Nav2 costmap
         self.global_map_sub = self.create_subscription(
             OccupancyGrid, '/global_costmap/costmap', self.map_callback, QoSProfile(depth=300, reliability=ReliabilityPolicy.BEST_EFFORT))
-
         # Create path visualizer publisher 
         self.path_pub = self.create_publisher(Path, '/path_viz', 10)
 
-        # Initialize map parameters to default values 
+        # Initialize map parameters to default values. Will be correctly loaded later
         self.origin = [0,0,0]
         self.map_res = 0.05
-
-        # global costmap variable
+        # Global costmap variable
         self.occupancy_map = None
-
-        # List of cartisian points containing A* path to goal
+        
+        # List of cartisian points containing A* path to goal, in map frame in meters
         self.path_cart = None
-
-        # P-controller items
+        
+        # P-control publisher
         self.publisher_vel = self.create_publisher(Twist, '/cmd_vel', 10)
-        # The P-controller runs in the global frame. 
-        self.curr_pose = Pose() # holds current position of turtlebot.
+        # The P-controller runs in the global frame.
+        self.curr_pose = Pose() # holds current global position of turtlebot.
         self.setpoint_pose = Pose() # defaults to 0 till we receive a new setpoint from external node
         self.vel_msg = Twist() # holds velocity command to send to turtlebot
-        # Used for finding TF between base_footprint frame and map (i.e. robot position)
+        self.reached_intermediate_goal = False
+
+        # Used for finding TF between base_link frame and map (i.e. robot position)
         # See https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.reached_intermediate_goal = False
 
     def goal_callback(self, goal_request):
         """Determine whether to accept or reject the goal"""
 
         # Access global map and pass to A* function
         while True:
+            # wait till global costmap has been received
             if self.occupancy_map is None:
                 pass
             else:
                 break
-        initial_pose = goal_request.initial_pose
+        initial_pose = goal_request.initial_pose # client also sends initial pose of the robot
 
-        start = self.coord2pixel((initial_pose.pose.pose.position.x, initial_pose.pose.pose.position.y))
-        goal =  self.coord2pixel((goal_request.goal_x, goal_request.goal_y))
+        # Get start and goal positions in map pixels
+        start = self.coord_2_pixel((initial_pose.pose.pose.position.x, initial_pose.pose.pose.position.y))
+        goal =  self.coord_2_pixel((goal_request.goal_x, goal_request.goal_y))
 
         # start = (250, 150)
         # goal =  (50, 150)
@@ -94,39 +88,38 @@ class AStarActionServer(Node):
             self.get_logger().info(f"No path found")
             return GoalResponse.REJECT
 
+        # Convert path from pixels to map frame in meters
         path_scale = path*self.map_res
         self.path_cart = path_scale + self.origin
 
+        # Create RViz message for visualizing path
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         for pose in self.path_cart:
             point = PoseStamped()
-
             point.pose.position.x = pose[0]
             point.pose.position.y = pose[1]
-
             path_msg.poses.append(point)
-
         self.path_pub.publish(path_msg)
-        dist = cost*self.map_res
-        self.get_logger().info(f"Path distance:{dist}")
+
         self.get_logger().info(f"Number of points: {self.path_cart.shape[0]}")
         #plt.plot(self.path_cart[:, 0], self.path_cart[:, 1])
         #plt.show()
         return GoalResponse.ACCEPT
 
     def map_callback(self, msg):
+        """Load received global costmap"""
 
         if self.occupancy_map is None:
-
             self.origin = [msg.info.origin.position.x, msg.info.origin.position.y]
-            
             self.height = msg.info.height
             self.width = msg.info.width
             self.map_res = msg.info.resolution
             self.occupancy_map = np.reshape(msg.data, (self.height, self.width))
+            # downsample map for faster processing
             self.occupancy_map = downscale_local_mean(self.occupancy_map, (2,2))
             self.map_res *= 2
+            # Convert costmap message from y-by-x to x-by-y coordinates as it is row-major order, with (0,0) at bottom left
             self.occupancy_map = np.transpose(self.occupancy_map)
 
             #maze_plot=np.transpose(np.nonzero(self.occupancy_map))
@@ -161,27 +154,20 @@ class AStarActionServer(Node):
             # #plt.plot(path_cart[:, 0], path_cart[:, 1])
             # plt.show()
 
-    def coord2pixel(self, point):
+    def coord_2_pixel(self, point):
+        """Convert a coordinate in map frame (meters) to pixels"""
         return (
             round((point[0] - self.origin[0])/(self.map_res)), 
             round((point[1] - self.origin[1])/(self.map_res))
         ) 
 
     def execute_callback(self, goal_handle):
-        """Follow A* planned path using a P controller"""
+        """Follow planned path using a P controller"""
         start_time = self.get_clock().now()
-
         self.get_logger().info('Executing goal...') 
         
-        # Use the points in path_cart variable for P controller. path_cart is list of cartestion points in plan
-
-        # P controller pseduocode
-        # P Controller should subscribe to the tf topic to determine current pose
-        # calculate error between current pose and intermediate goal pose
-        # generate control signals (velocities) required to reach intermediate goal pose
-        # publish commanded velocities to drive the robot from its current position to the intermediate goal pose via /cmd_vel topic
         prev_pose = [self.curr_pose.x, self.curr_pose.y]
-        dist = 0
+        dist_travelled = 0
         for point in self.path_cart:
             self.get_logger().info(f"Current Pose: [{self.curr_pose.x:.3f},{self.curr_pose.y:.3f},{self.curr_pose.theta:.3f}]")
             self.get_logger().info(f"Going to: {point}")
@@ -189,70 +175,59 @@ class AStarActionServer(Node):
             self.setpoint_pose.y = point[1]
             self.reached_intermediate_goal = False
             while not self.reached_intermediate_goal:
-                self.update_current_pose()
+                self.update_current_pose() # Get latest position of turtlebot
                 self.run_control_loop_once() # run 1 iteration of P control
                 
-                dist += math.sqrt(
+                # Create feedback message with updated info
+                dist_travelled += math.sqrt(
                     math.pow(self.curr_pose.x - prev_pose[0], 2) + math.pow(self.curr_pose.y - prev_pose[1], 2)
                 )
-
-                prev_pose = [self.curr_pose.x, self.curr_pose.y]
                 feedback_msg = Move2Goal.Feedback()
                 feedback_msg.current_pose.pose.position.x = self.curr_pose.x
                 feedback_msg.current_pose.pose.position.y = self.curr_pose.y
-
                 elapsed_time = self.get_clock().now() - start_time
-
                 feedback_msg.navigation_time =  elapsed_time.to_msg()
-                feedback_msg.distance_remaining =  dist
-                
+                feedback_msg.distance_travelled =  dist_travelled
                 goal_handle.publish_feedback(feedback_msg)
-                
+                prev_pose = [self.curr_pose.x, self.curr_pose.y]
+
                 rclpy.spin_once(self, timeout_sec=0.1) # 10Hz spin
         
-        #Have now reached the final goal
-        self.get_logger().info('Reached goal')
+        self.get_logger().info('Reached Final goal')
+        self.occupancy_map = None # Reset Occupancy map for next iteration
+        
+        # Notify client
         goal_handle.succeed()
         result = Move2Goal.Result()
-        result.reached_goal = True
-
-        # Reset Occupancy map for next iteration
-        self.occupancy_map = None
-        
+        result.reached_goal = True  
         return result
     
     #P-controller helper functions
     def update_current_pose(self):
-        """Get current pose of Turtlebot. Find the transform between base_footprint and map"""
-
-        from_frame_rel = 'base_footprint'
+        """Get current pose of Turtlebot"""
+        # Find the transform between base_link and map
+        from_frame_rel = 'base_link'
         to_frame_rel = 'map'
-
         try:
             t = self.tf_buffer.lookup_transform(
                 to_frame_rel,
                 from_frame_rel,
                 rclpy.time.Time())
-            
             self.curr_pose.x = t.transform.translation.x
             self.curr_pose.y = t.transform.translation.y
             base_map_rot = t.transform.rotation
-        
             quaternion = (
                 base_map_rot.x,
                 base_map_rot.y,
                 base_map_rot.z,
                 base_map_rot.w
                 )
-    
             _, _, self.curr_pose.theta = self.euler_from_quaternion(quaternion)
 
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform {to_frame_rel} to {from_frame_rel}: {ex}')
             return
-        
-        # self.get_logger().info(f"Current Pose: [{self.curr_pose.x:.3f},{self.curr_pose.y:.3f},{self.curr_pose.theta:.3f}]")
 
     def euler_from_quaternion(self, quaternion):       
         """
@@ -282,13 +257,12 @@ class AStarActionServer(Node):
         return min(max(val, -bound), bound)
     
     def get_position_error(self):
-        """Calculate error in position between current pose and the setpoint pose.
-        """
+        """Calculate error in position between current pose and the setpoint pose"""
         # As we independantly have another P controller to turn towards the setpoint, we can 
         # think of the position error as a straight line away from our current position.
         # So, use Euclidean distance as the error function.
-        return sqrt(pow((self.setpoint_pose.x - self.curr_pose.x), 2) +
-                    pow((self.setpoint_pose.y - self.curr_pose.y), 2))
+        return math.sqrt(math.pow((self.setpoint_pose.x - self.curr_pose.x), 2) +
+                         math.pow((self.setpoint_pose.y - self.curr_pose.y), 2))
 
     def get_linear_velocity(self, Kp=1.2) -> float:
         """Proportional controller for Position"""
@@ -296,19 +270,20 @@ class AStarActionServer(Node):
         # This will allow robot to stay on course
         if abs(self.get_angle_error()) > math.pi/3.0:
             return 0.0
-        # As turtlebot gets closer to the setpoint, we automatically decrease it's linear velocity
-        return self.bound(Kp * self.get_position_error(), 0.3) # Max linear velocity from Turtlebot4 datasheet
+        # Calculate proportional linear velocity
+        return self.bound(Kp * self.get_position_error(), 0.3) # Max linear velocity from Turtlebot4 datasheet: 0.3m/s
 
     def get_required_theta(self):
         """Calculate angle needed for turtlebot to face the setpoint"""
-        return atan2(self.setpoint_pose.y - self.curr_pose.y, self.setpoint_pose.x - self.curr_pose.x)
+        return math.atan2(self.setpoint_pose.y - self.curr_pose.y, self.setpoint_pose.x - self.curr_pose.x)
 
     def get_angle_error(self):
         '''Calculate change in angle needed for turtlebot to face the setpoint'''
         angle_error = self.get_required_theta() - self.curr_pose.theta
-        # Accounts for discontinous jump at pi -> -pi
-        # Add or subtract a full turn (2pi rad) when the angle resulting angle is outside the (-pi, pi) range.
-        # e.g. if current theta is 3.14 and desired theta is -3.1415, the smallest rotation angle would be 0.0015 rad 'left' and the rotation don't need to be 1 whole round rotation : = -6.2 rad
+        # if current theta is 3.14 and desired theta is -3.1415, the smallest rotation angle would be 0.0015 rad 'left' 
+        # and the rotation shouldn't be 1 whole round rotation : = -6.2 rad
+        # So, Accounts for discontinous jump at pi -> -pi
+        # by adding or subtracting a full turn (2pi rad) when the angle resulting angle is outside the (-pi, pi) range.
         if angle_error < -math.pi:
             angle_error = angle_error + 2*math.pi
         elif (angle_error > math.pi):
@@ -316,17 +291,18 @@ class AStarActionServer(Node):
         return angle_error
 
     def get_angular_velocity(self, Kp=6.2) -> float:
-        '''Proportional controller for Required orientation to move towards setpoint position'''
-        # As turtlebot faces the setpoint position more, we automatically decrease angular velocity
-        return self.bound(Kp * self.get_angle_error(), 1.9) # Max angular velocity from Turtlebot4 datasheet
+        '''Proportional controller for orientation to face towards setpoint position'''
+        # Calculate proprotional angular velocity
+        return self.bound(Kp * self.get_angle_error(), 1.9) # Max angular velocity from Turtlebot4 datasheet: 1.9rad/s
 
     def run_control_loop_once(self):
+        """Run 1 iteration of P-controller"""
         # If our control loop is still active when the robot is really close, then we will start seeing unnecessary osciliations
         # due to control inaccuracies. e.g. Turtlebot jittering back and forth. 
-        # So, if turtlebot is closer than 0.1 to setpoint, temporarily disable control loop
-        # This avoids oscillation
+        # So, if turtlebot is closer than 0.1 to setpoint, mark that we've reached the intermediate goal
+        # This avoids oscillation, as well as allowing us to quickly move to next intermediate goal point
         if self.get_position_error() >= 0.1:
-            self.notified_planner = False # will need to notify planner, once we have reached setpoint
+            # generate control signals (velocities) required to reach intermediate goal pose
             self.vel_msg.linear.x = self.get_linear_velocity() # move towards setpoint
             self.vel_msg.angular.z = self.get_angular_velocity() # orient towards setpoint
         else:
@@ -342,5 +318,6 @@ def main(args=None):
     while True:
         rclpy.spin_once(a_star_action_server)
     rclpy.shutdown()
+
 if __name__ == '__main__':
     main()
