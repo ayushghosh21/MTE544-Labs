@@ -77,7 +77,7 @@ class AStarClient(Node):
         """Send ActionServer a new goal"""
 
         goal_msg = Move2Goal.Goal()
-        if not (initial_x and initial_y and goal_x and goal_y):
+        if not (initial_x and initial_y and goal_x is not None and goal_y is not None):
             # Will be getting a goal pose from RViz
             while True:
                 # Wait till we get an initial pose from tf
@@ -148,17 +148,17 @@ def main(args=None):
 
     action_client = AStarClient()
     
-    goal_x = action_client.get_parameter('goal_x').value
-    goal_y = action_client.get_parameter('goal_y').value
     initial_pose = None
 
-    if action_client.get_parameter('predefined_goal'):
+    if action_client.get_parameter('predefined_goal').value:
         # Receiving a goal pose through node launch
         # Therefore, get initial pose of robot ourselves
         initial_pose = action_client.get_current_pose()
     
-    if action_client.get_parameter('predefined_goal') and initial_pose is not None:
+    if action_client.get_parameter('predefined_goal').value and initial_pose is not None:
         # Ensure we were able to get initial pose of robot ourselves
+        goal_x = action_client.get_parameter('goal_x').value
+        goal_y = action_client.get_parameter('goal_y').value
         initial_x = initial_pose.pose.pose.position.x
         initial_y = initial_pose.pose.pose.position.y
         action_client.send_goal(initial_x, initial_y, goal_x, goal_y)
