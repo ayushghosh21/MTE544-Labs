@@ -67,4 +67,9 @@ def generate_launch_description():
 			executable='rviz2',
 			arguments=['-d', [os.path.join(get_package_share_directory("mte544_a_star"), 'launch', 'map_rviz.rviz')]]
 		),
+
+		launch_ros.actions.Node(
+			package='mte544_a_star',
+			executable='mte544_navigation_server.py',
+		),
     ])
