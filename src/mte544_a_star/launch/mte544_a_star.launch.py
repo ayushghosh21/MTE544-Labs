@@ -9,8 +9,8 @@ def generate_launch_description():
 
 	# Default initial robot positions for gazebo simulation.
 	# Should be modified to match robot's actual position as needed.
-	initial_pose_x = 2
-	initial_pose_y = 0.5
+	initial_pose_x = 0
+	initial_pose_y = 0
 	initial_yaw = 0
 
 	lifecycle_nodes = [
