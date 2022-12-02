@@ -5,6 +5,7 @@ from scipy.ndimage import rotate
 import heapq #Priority queue implementation
 from collections import deque as queue
 import math
+import bezier
 
 # List containing directions for neighboring indices (i,j) = (x,y)
 dirVal = [ (0,1), (1,1), (1,0),(0,-1), (1,-1), (-1,0), (-1, -1), (-1, 1)]
@@ -105,5 +106,8 @@ def find_path(start: tuple, goal: tuple, occupancy_grid):
     # Compute the path with A*
     path, cost = A_star(occupancy_grid, start, goal)
     path = np.array(list(path))
-
-    return path, cost
+    curve = bezier.Curve.from_nodes(np.asfortranarray(path.T))
+    
+    s_vals = np.linspace(0.0, 1.0, 100)
+    test = np.array(curve.evaluate_multi(s_vals))
+    return test.T, cost
