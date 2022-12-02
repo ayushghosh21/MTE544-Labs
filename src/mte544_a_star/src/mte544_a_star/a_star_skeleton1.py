@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import yaml
 from scipy.ndimage import rotate
-import heapq 
+import heapq #Priority queue implementation
 from collections import deque as queue
 import math
 
@@ -49,7 +49,7 @@ def heuristic_diag(x1,y1,x2,y2):
     dy = abs(y1 - y2)
     D = 1
     D2 = 1.4
-    return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
+    return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy) #http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#diagonal-distance
 
 def A_star(maze: np.ndarray, start, end):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
@@ -78,7 +78,7 @@ def A_star(maze: np.ndarray, start, end):
                 p.append(current_node.position)
                 # Found the goal
                 if current_node == end_node:
-                    # Return the shortest path found
+                    # Return the shortest path found along with heuristic
                     return p, heuristic_diag(start_node.position[0], start_node.position[1], end_node.position[0], end_node.position[0])
 
                 # Generate children, which are the neighboring nodes. Should use 4 or 8 points connectivity for a grid.
@@ -89,12 +89,12 @@ def A_star(maze: np.ndarray, start, end):
                     nxt_pos = tuple(np.add(current_node.position ,adj))
 
                     if (is_legal(maze, visited, nxt_pos)):
-                        prob = maze[nxt_pos[0],nxt_pos[1]]
-                        move_cost += prob/80
+                        prob = maze[nxt_pos[0],nxt_pos[1]] #Probability of a point on the grid
+                        move_cost += prob/80 #scaling found arbitrarily through testing
                         est_cost = cost + move_cost + (0.25 + prob/100) * heuristic_diag(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                         nxt_node = Node(None, nxt_pos)
                         nxt_node.g = cost + move_cost
-                        heapq.heappush(open_list, (est_cost, (nxt_node, p)))
+                        heapq.heappush(open_list, (est_cost, (nxt_node, p))) #Push all generated points to the priority queue
                         visited[nxt_pos[0],nxt_pos[1]] = True
     # No path found
     return [], 0
