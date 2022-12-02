@@ -57,6 +57,7 @@ class AStarActionServer(Node):
         self.setpoint_pose = Pose() # defaults to 0 till we receive a new setpoint from external node
         self.vel_msg = Twist() # holds velocity command to send to turtlebot
         self.reached_intermediate_goal = False
+        self.orientation_correct_goal = False
 
         # Used for finding TF between base_link frame and map (i.e. robot position)
         # See https://docs.ros.org/en/galactic/Tutorials/Intermediate/Tf2/Writing-A-Tf2-Listener-Py.html#write-the-listener-node
@@ -166,6 +167,13 @@ class AStarActionServer(Node):
         self.get_logger().info('Reached Final goal')
         self.occupancy_map = None # Reset Occupancy map for next iteration
         
+
+        # Account for rotating to correct orientation when reached goal
+        while not self.orientation_correct_goal:
+            self.update_current_pose() # Get latest position of turtlebot
+            self.run_control_loop_orientation_once() # run 1 iteration of P controlss
+            rclpy.spin_once(self, timeout_sec=0.1) # 10Hz spin
+        
         # Notify client
         goal_handle.succeed()
         result = Move2Goal.Result()
@@ -249,9 +257,12 @@ class AStarActionServer(Node):
         """Calculate angle needed for turtlebot to face the setpoint"""
         return math.atan2(self.setpoint_pose.y - self.curr_pose.y, self.setpoint_pose.x - self.curr_pose.x)
 
-    def get_angle_error(self):
+    def get_angle_error(self, theta=None):
         '''Calculate change in angle needed for turtlebot to face the setpoint'''
-        angle_error = self.get_required_theta() - self.curr_pose.theta
+        if theta is None:
+            angle_error = self.get_required_theta() - self.curr_pose.theta
+        else:
+            angle_error = theta - self.curr_pose.theta
         # if current theta is 3.14 and desired theta is -3.1415, the smallest rotation angle would be 0.0015 rad 'left' 
         # and the rotation shouldn't be 1 whole round rotation : = -6.2 rad
         # So, Accounts for discontinous jump at pi -> -pi
@@ -262,10 +273,14 @@ class AStarActionServer(Node):
             angle_error = angle_error - 2*math.pi
         return angle_error
 
-    def get_angular_velocity(self, Kp=6.2) -> float:
+    def get_angular_velocity(self, Kp=6.2, theta=None) -> float:
         '''Proportional controller for orientation to face towards setpoint position'''
         # Calculate proprotional angular velocity
-        return self.bound(Kp * self.get_angle_error(), 1.9) # Max angular velocity from Turtlebot4 datasheet: 1.9rad/s
+        if theta is None:
+            return self.bound(Kp * self.get_angle_error(), 1.9) # Max angular velocity from Turtlebot4 datasheet: 1.9rad/s
+        else:
+            return self.bound(Kp * self.get_angle_error(theta=theta), 1.9) # Max angular velocity from Turtlebot4 datasheet: 1.9rad/s
+            
 
     def run_control_loop_once(self):
         """Run 1 iteration of P-controller"""
@@ -279,6 +294,18 @@ class AStarActionServer(Node):
             self.vel_msg.angular.z = self.get_angular_velocity() # orient towards setpoint
         else:
             self.reached_intermediate_goal = True
+            # Stopping our robot after the movement is over.
+            self.vel_msg.linear.x = 0.0
+            self.vel_msg.angular.z = 0.0
+        self.publisher_vel.publish(self.vel_msg)
+    
+    def run_control_loop_orientation_once(self):
+        """Run 1 iteration of P-controller for adjusting orientation at end of paths"""
+        if self.get_angle_error(theta=math.pi) >= 0.087: # 5 degrees
+            # generate control signals (velocities) required to reach intermediate goal pose
+            self.vel_msg.angular.z = self.get_angular_velocity(theta=math.pi) # orient towards setpoint
+        else:
+            self.orientation_correct_goal = True
             # Stopping our robot after the movement is over.
             self.vel_msg.linear.x = 0.0
             self.vel_msg.angular.z = 0.0
