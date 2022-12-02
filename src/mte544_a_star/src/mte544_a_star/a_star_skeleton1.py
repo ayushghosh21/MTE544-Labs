@@ -79,7 +79,7 @@ def A_star(maze: np.ndarray, start, end):
                 # Found the goal
                 if current_node == end_node:
                     # Return the shortest path found
-                    return p, cost
+                    return p, heuristic_diag(start_node.position[0], start_node.position[1], end_node.position[0], end_node.position[0])
 
                 # Generate children, which are the neighboring nodes. Should use 4 or 8 points connectivity for a grid.
                 for adj in dirVal:
@@ -90,8 +90,8 @@ def A_star(maze: np.ndarray, start, end):
 
                     if (is_legal(maze, visited, nxt_pos)):
                         prob = maze[nxt_pos[0],nxt_pos[1]]
-                        move_cost += prob/100
-                        est_cost = cost + move_cost + (prob/150) * heuristic_diag(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
+                        move_cost += prob/80
+                        est_cost = cost + move_cost + (0.25 + prob/100) * heuristic_diag(nxt_pos[0], nxt_pos[1], end_node.position[0], end_node.position[0]) #estimated cost based on heuristic
                         nxt_node = Node(None, nxt_pos)
                         nxt_node.g = cost + move_cost
                         heapq.heappush(open_list, (est_cost, (nxt_node, p)))
@@ -105,16 +105,5 @@ def find_path(start: tuple, goal: tuple, occupancy_grid):
     # Compute the path with A*
     path, cost = A_star(occupancy_grid, start, goal)
     path = np.array(list(path))
-    #print(cost*0.05)
-    # maze_plot=np.transpose(np.nonzero(occupancy_grid))
-
-    # plt.plot(maze_plot[:,0], maze_plot[:,1], '.',markersize=2)
-    
-    # if not np.any(path): # If path is empty, will be NaN, check if path is NaN
-    #     print("No path found")
-    # else:
-    #     plt.plot(path[:,0], path[:,1], linewidth=3)
-    # plt.grid()
-    #plt.show()
 
     return path, cost

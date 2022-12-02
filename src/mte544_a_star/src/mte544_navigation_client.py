@@ -128,7 +128,7 @@ class AStarClient(Node):
         """Parse ActionServer result"""
 
         result = future.result().result
-        self.get_logger().info('Goal Reached: {0}'.format(result.reached_goal))
+        self.get_logger().info(f"Goal Reached: {result.reached_goal}, Estimated Heuristic Cost: {result.estimated_heuristic_cost:.3f}, Total Distance Travelled: {result.total_distance_travelled:.3f}")
         self.goal_pose = None
         rclpy.shutdown()
 

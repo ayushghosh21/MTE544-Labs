@@ -49,6 +49,7 @@ class AStarActionServer(Node):
         # List of cartisian points containing A* path to goal, in map frame in meters
         self.path_cart = None
         
+        self.estimated_heuristic = None
         # P-control publisher
         self.publisher_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         # The P-controller runs in the global frame.
@@ -78,11 +79,10 @@ class AStarActionServer(Node):
         start = self.coord_2_pixel((initial_pose.pose.pose.position.x, initial_pose.pose.pose.position.y))
         goal =  self.coord_2_pixel((goal_request.goal_x, goal_request.goal_y))
 
-        # start = (250, 150)
-        # goal =  (50, 150)
         # Run A*
         [path, cost] = find_path(start, goal, self.occupancy_map)
-        
+
+        self.estimated_heuristic = cost
         if path.size == 0:
             # Failed to find a path to the goal
             self.get_logger().info(f"No path found")
@@ -103,8 +103,7 @@ class AStarActionServer(Node):
         self.path_pub.publish(path_msg)
 
         self.get_logger().info(f"Number of points: {self.path_cart.shape[0]}")
-        #plt.plot(self.path_cart[:, 0], self.path_cart[:, 1])
-        #plt.show()
+
         return GoalResponse.ACCEPT
 
     def map_callback(self, msg):
@@ -116,43 +115,13 @@ class AStarActionServer(Node):
             self.width = msg.info.width
             self.map_res = msg.info.resolution
             self.occupancy_map = np.reshape(msg.data, (self.height, self.width))
+            
             # downsample map for faster processing
             self.occupancy_map = downscale_local_mean(self.occupancy_map, (2,2))
             self.map_res *= 2
+            
             # Convert costmap message from y-by-x to x-by-y coordinates as it is row-major order, with (0,0) at bottom left
             self.occupancy_map = np.transpose(self.occupancy_map)
-
-            #maze_plot=np.transpose(np.nonzero(self.occupancy_map))
-            #plt.plot(maze_plot[:,0], maze_plot[:,1], '.')
-            #plt.show()
-
-
-            ## KEEP IT FOR TESTING!!!
-
-            # start = (177, 117)
-            # goal =  (50, 150)
-            # goal = [0, -0.08]
-            
-            # goal[0] -= self.origin[0]
-            # goal[1] -= self.origin[1]
-
-            # goal[0] /= self.map_res
-            # goal[1] /= self.map_res
-            
-            # goal[0] = round(goal[0])
-            # goal[1] = round(goal[1])
-
-            # #print(goal)
-            # [path, cost] = find_path(start, (goal[0], goal[1]), self.occupancy_map)
-
-            # path_scale = path*self.map_res
-            # path_cart = path_scale + self.origin
-
-            # dist = cost*self.map_res
-            # print(dist)
-            # #print(path_cart.shape)
-            # #plt.plot(path_cart[:, 0], path_cart[:, 1])
-            # plt.show()
 
     def coord_2_pixel(self, point):
         """Convert a coordinate in map frame (meters) to pixels"""
@@ -182,16 +151,17 @@ class AStarActionServer(Node):
                 dist_travelled += math.sqrt(
                     math.pow(self.curr_pose.x - prev_pose[0], 2) + math.pow(self.curr_pose.y - prev_pose[1], 2)
                 )
-                feedback_msg = Move2Goal.Feedback()
-                feedback_msg.current_pose.pose.position.x = self.curr_pose.x
-                feedback_msg.current_pose.pose.position.y = self.curr_pose.y
-                elapsed_time = self.get_clock().now() - start_time
-                feedback_msg.navigation_time =  elapsed_time.to_msg()
-                feedback_msg.distance_travelled =  dist_travelled
-                goal_handle.publish_feedback(feedback_msg)
-                prev_pose = [self.curr_pose.x, self.curr_pose.y]
 
+                prev_pose = [self.curr_pose.x, self.curr_pose.y]
                 rclpy.spin_once(self, timeout_sec=0.1) # 10Hz spin
+            
+            feedback_msg = Move2Goal.Feedback()
+            feedback_msg.current_pose.pose.position.x = self.curr_pose.x
+            feedback_msg.current_pose.pose.position.y = self.curr_pose.y
+            elapsed_time = self.get_clock().now() - start_time
+            feedback_msg.navigation_time =  elapsed_time.to_msg()
+            feedback_msg.distance_travelled =  dist_travelled
+            goal_handle.publish_feedback(feedback_msg)
         
         self.get_logger().info('Reached Final goal')
         self.occupancy_map = None # Reset Occupancy map for next iteration
@@ -199,6 +169,8 @@ class AStarActionServer(Node):
         # Notify client
         goal_handle.succeed()
         result = Move2Goal.Result()
+        result.estimated_heuristic_cost = self.estimated_heuristic
+        result.total_distance_travelled = dist_travelled
         result.reached_goal = True  
         return result
     
