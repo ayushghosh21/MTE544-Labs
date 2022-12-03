@@ -9,16 +9,16 @@ def generate_launch_description():
 
 	# Default initial robot positions for gazebo simulation.
 	# Should be modified to match robot's actual position as needed.
-	initial_pose_x = 2
-	initial_pose_y = 0.5
-	initial_yaw = 0
+	initial_pose_x = 0.0
+	initial_pose_y = 0.0
+	initial_yaw = 0.0
 
 	lifecycle_nodes = [
 		'map_server',
 		'planner_server'
 	]
 
-	map_file = os.path.join(get_package_share_directory("mte544_a_star"), 'launch', 'map.yaml')
+	map_file = os.path.join(get_package_share_directory("mte544_a_star"), 'launch', 'Entry_4.yaml')
 	params_file = os.path.join(get_package_share_directory("mte544_a_star"), 'param', 'burger.yaml')
 	
 	return launch.LaunchDescription([
