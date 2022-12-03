@@ -23,6 +23,13 @@ In 3 seperate terminals:
 - For pre-defining a goal from terminal (modify x and y as needed): 
   - `ros2 run mte544_a_star mte544_navigation_client.py --ros-args -p predefined_goal:=True -p goal_x:=4.0 -p goal_y:=0.8`
 
+## Branches
+
+- `lab3` - Implementation for Lab 3 part 1 (simulation on Office / house map)
+- `lab3_physical` - changes for Lab 3 part 2 - running `Entry_4` map, and running on the physical robot
+- `lab3-gazebo` - changes from `lab3` to coincide `odom` and `map` frame, by creating our own gazebo launch file
+- `lab3-curved` - Smoothing generated path with bezier curves
+
 ## Notes
 - tf contains transform b/w odom and base_footprint. And also odom to map if given
 - map to odom tf publisher in the launch file is altnerative to AMCL, to visualize map in ROS. This static tf assumes odom sensors are perfect and localization is perfect
