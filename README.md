@@ -15,11 +15,10 @@ source install/setup.bash
 ## Running
 
 In 3 seperate terminals:
-- `ros2 launch turtlebot3_gazebo turtlebot3_house.launch.py`
 - `ros2 launch mte544_a_star mte544_a_star.launch.py`
 - For defining goals in RViz:
   - `ros2 run mte544_a_star mte544_navigation_client.py`
-  - Then through RViz, give a `2D Goal Pose`
+  - Then through RViz, give a `Publish point`
 - For pre-defining a goal from terminal (modify x and y as needed): 
   - `ros2 run mte544_a_star mte544_navigation_client.py --ros-args -p predefined_goal:=True -p goal_x:=4.0 -p goal_y:=0.8`
 

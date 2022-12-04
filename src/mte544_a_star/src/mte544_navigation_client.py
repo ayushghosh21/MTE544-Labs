@@ -5,7 +5,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PointStamped
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -20,7 +20,7 @@ class AStarClient(Node):
         self._action_client = ActionClient(self, Move2Goal, 'mte_544_a_star')
         # create the subscriber object to RViz `2D Goal Pose`
         self.goal_pose_sub = self.create_subscription(
-            PoseStamped, '/goal_pose', self.goal_pose_rviz_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+            PointStamped, '/clicked_point', self.goal_pose_rviz_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
         # Used for finding TF between base_link frame and map (i.e. robot position)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -71,7 +71,7 @@ class AStarClient(Node):
         """Store `2D Goal Pose` from RViz"""
         if self.goal_pose is None:
             self.goal_pose = msg
-            self.get_logger().info(f"Goal position: {self.goal_pose.pose.position.x, self.goal_pose.pose.position.y}")
+            self.get_logger().info(f"Goal position: {self.goal_pose.point.x, self.goal_pose.point.y}")
 
     def send_goal(self, initial_x=None, initial_y=None, goal_x=None, goal_y=None):
         """Send ActionServer a new goal"""
@@ -94,8 +94,8 @@ class AStarClient(Node):
                     break
             
             goal_msg.initial_pose = self.initial_pose
-            goal_msg.goal_x = self.goal_pose.pose.position.x
-            goal_msg.goal_y = self.goal_pose.pose.position.y
+            goal_msg.goal_x = self.goal_pose.point.x
+            goal_msg.goal_y = self.goal_pose.point.y
 
         else:
             # Received a predefined goal
