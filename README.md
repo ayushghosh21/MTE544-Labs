@@ -1,6 +1,13 @@
 # MTE 544 Lab 3 - Path Planning and Control
 > By Group 8, Ayush Ghosh, Nick Shaju, Abhinav Agrahari
 
+This `planner` package implements an A* Planner based on a given map, and a P-controller to autonomously guide the TurtleBot along the determined path. 
+
+> [Click here](https://youtu.be/dRcdahp3rSI) for a Youtube video of the path planner in action!
+
+Pink/Purple/Blue is the inflated costmap. Green is the path the robot autonomously follows
+
+[![](./images/planner/animation.gif)](https://youtu.be/dRcdahp3rSI)
 
 ## Setup
 To setup the `mte544_a_star` package, build and source this workspace: 
@@ -23,8 +30,25 @@ In 3 seperate terminals:
 - For pre-defining a goal from terminal (modify x and y as needed): 
   - `ros2 run mte544_a_star mte544_navigation_client.py --ros-args -p predefined_goal:=True -p goal_x:=4.0 -p goal_y:=0.8`
 
+# MTE 544 Lab 2 - Particle Filter Localization
+
+This `particle_filter` package implements a Particle Filter for localizing a stationary 2D mobile robot using LiDAR data against a provided map, with a `likelihood field model`.
+
+> [Click here](https://youtu.be/S0fdMmHizCg) for a Youtube video of the particle filter in action!
+
+Yellow arrows are the Particles, while `red` is the super-imposed LiDAR data with the origin at average pose of the particle filter.
+
+[![](./images/particle_filter/animation.gif)](https://youtu.be/S0fdMmHizCg)
+
+## Running 
+
+See the `lab2` branch for more
+
+# Other Notes
+
 ## Branches
 
+- `lab2` - Implementation for Lab 2
 - `lab3` - Implementation for Lab 3 part 1 (simulation on Office / house map)
 - `lab3_physical` - changes for Lab 3 part 2 - running `Entry_4` map, and running on the physical robot
 - `lab3-gazebo` - changes from `lab3` to coincide `odom` and `map` frame, by creating our own gazebo launch file
